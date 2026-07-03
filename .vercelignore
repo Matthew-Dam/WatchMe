@@ -1,0 +1,9 @@
+backend/
+docker/
+docker-compose.yml
+media/
+start_servers.py
+migrate_supabase.py
+seed_*.py
+supabase_*.sql
+WatchMe_Architecture_and_Prompt.md
