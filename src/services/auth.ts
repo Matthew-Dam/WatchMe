@@ -15,8 +15,8 @@ export async function login(data: LoginRequest): Promise<AuthTokens> {
   return response.data
 }
 
-export async function register(data: RegisterRequest): Promise<User> {
-  const response = await api.post<User>('/auth/register', {
+export async function register(data: RegisterRequest): Promise<AuthTokens> {
+  const response = await api.post<AuthTokens>('/auth/register', {
     email: data.email,
     password: data.password,
     display_name: data.username,

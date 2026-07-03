@@ -46,7 +46,10 @@ export const useAuthStore = create<AuthState>()(
       register: async (email: string, username: string, password: string) => {
         set({ isLoading: true })
         try {
-          await authService.register({ email, username, password })
+          const tokens = await authService.register({ email, username, password })
+          set({ tokens, isAuthenticated: true })
+          await get().loadUser()
+          await get().fetchProfiles()
         } finally {
           set({ isLoading: false })
         }
