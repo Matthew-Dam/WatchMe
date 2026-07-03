@@ -44,3 +44,18 @@ export async function importFromTMDB(tmdbId: number, mediaType: string = 'movie'
   })
   return response.data
 }
+
+export interface ImportLogEntry {
+  id: string
+  title_name: string
+  tmdb_id: number | null
+  media_type: string
+  status: string
+  error_message: string | null
+  imported_at: string
+}
+
+export async function getImportHistory(): Promise<{ items: ImportLogEntry[]; total: number }> {
+  const response = await api.get('/admin/imports')
+  return response.data
+}

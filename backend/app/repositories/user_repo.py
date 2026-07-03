@@ -4,7 +4,7 @@ from typing import Optional
 from sqlalchemy import select, delete, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.dialects.postgresql import UUID
-from app.models.postgres_models import User, Profile, UserSession, Rating, WatchHistory, WatchlistItem
+from app.models.postgres_models import User, Profile, UserSession, Rating, WatchHistory, WatchlistItem, ImportLog
 
 
 class UserRepository:
@@ -141,3 +141,33 @@ class UserRepository:
     async def check_watchlist_item(self, profile_id: uuid.UUID, title_id: uuid.UUID) -> bool:
         result = await self.db.execute(select(WatchlistItem).where(and_(WatchlistItem.profile_id == profile_id, WatchlistItem.title_id == title_id)))
         return result.scalar_one_or_none() is not None
+
+    async def check_imported(self, tmdb_id: int) -> Optional[ImportLog]:
+        result = await self.db.execute(
+            select(ImportLog).where(ImportLog.tmdb_id == tmdb_id, ImportLog.status == "success")
+        )
+        return result.scalar_one_or_none()
+
+    async def log_import(self, user_id: uuid.UUID, title_name: str, tmdb_id: int, media_type: str, title_id: str, status: str = "success", error_message: Optional[str] = None) -> ImportLog:
+        entry = ImportLog(
+            id=uuid.uuid4(),
+            user_id=user_id,
+            title_name=title_name,
+            tmdb_id=tmdb_id,
+            media_type=media_type,
+            title_id=title_id,
+            status=status,
+            error_message=error_message,
+        )
+        self.db.add(entry)
+        await self.db.flush()
+        return entry
+
+    async def get_import_history(self, user_id: uuid.UUID, limit: int = 50) -> list[ImportLog]:
+        result = await self.db.execute(
+            select(ImportLog)
+            .where(ImportLog.user_id == user_id)
+            .order_by(ImportLog.imported_at.desc())
+            .limit(limit)
+        )
+        return list(result.scalars().all())

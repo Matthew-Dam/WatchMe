@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/Input'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import api from '@/services/api'
 import * as catalog from '@/services/catalog'
-import { searchTMDB, getPopularTMDB, importFromTMDB, type TMDBResult } from '@/services/admin'
+import { searchTMDB, getPopularTMDB, importFromTMDB, getImportHistory, type TMDBResult, type ImportLogEntry } from '@/services/admin'
 import type { Genre, Country, Category, MoodTag } from '@/types'
 
 interface AddMovieForm {
@@ -305,10 +305,68 @@ function ManageTitlesTab() {
   )
 }
 
-function ReportsTab() {
+function ImportHistoryTab() {
+  const [items, setItems] = useState<ImportLogEntry[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    getImportHistory()
+      .then((res) => setItems(res.items))
+      .catch(() => toast.error('Failed to load import history'))
+      .finally(() => setLoading(false))
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <LoadingSpinner size="lg" variant="cyan" />
+      </div>
+    )
+  }
+
+  if (items.length === 0) {
+    return (
+      <div className="text-center py-12 text-gray-500 text-sm">
+        No imports yet. Use the TMDB Import tab to import titles.
+      </div>
+    )
+  }
+
   return (
-    <div className="text-gray-400 text-sm">
-      <p>Reports coming soon.</p>
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="text-gray-400 border-b border-border/50">
+            <th className="text-left py-2 px-2">Title</th>
+            <th className="text-left py-2 px-2">Type</th>
+            <th className="text-left py-2 px-2">TMDB ID</th>
+            <th className="text-left py-2 px-2">Status</th>
+            <th className="text-left py-2 px-2">Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item) => (
+            <tr key={item.id} className="border-b border-border/20 text-gray-300">
+              <td className="py-2 px-2 font-medium truncate max-w-[200px]">{item.title_name}</td>
+              <td className="py-2 px-2 text-xs uppercase">{item.media_type}</td>
+              <td className="py-2 px-2 text-xs text-gray-500">{item.tmdb_id ?? '—'}</td>
+              <td className="py-2 px-2">
+                <span className={`text-xs px-2 py-0.5 rounded ${item.status === 'success' ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
+                  {item.status}
+                </span>
+                {item.error_message && (
+                  <span className="block text-[10px] text-red-400 mt-0.5" title={item.error_message}>
+                    {item.error_message.slice(0, 60)}...
+                  </span>
+                )}
+              </td>
+              <td className="py-2 px-2 text-xs text-gray-500">
+                {new Date(item.imported_at).toLocaleDateString()}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }
@@ -341,8 +399,9 @@ function TMDBImportTab() {
     try {
       const data = await importFromTMDB(result.tmdb_id ?? 0, mediaType)
       toast.success(`Imported "${data.title}" successfully!`)
-    } catch {
-      toast.error('Import failed')
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Import failed'
+      toast.error(msg)
     } finally {
       setImporting(null)
     }
@@ -459,13 +518,13 @@ function TMDBImportTab() {
   )
 }
 
-type Tab = 'add-movie' | 'manage-titles' | 'reports' | 'tmdb-import'
+type Tab = 'add-movie' | 'manage-titles' | 'import-history' | 'tmdb-import'
 
 const tabs: { key: Tab; label: string }[] = [
   { key: 'add-movie', label: 'Add Movie' },
   { key: 'tmdb-import', label: 'TMDB Import' },
   { key: 'manage-titles', label: 'Manage Titles' },
-  { key: 'reports', label: 'Reports' },
+  { key: 'import-history', label: 'Import History' },
 ]
 
 export default function AdminPage() {
@@ -498,7 +557,7 @@ export default function AdminPage() {
             {activeTab === 'add-movie' && <AddMovieTab />}
             {activeTab === 'tmdb-import' && <TMDBImportTab />}
             {activeTab === 'manage-titles' && <ManageTitlesTab />}
-            {activeTab === 'reports' && <ReportsTab />}
+            {activeTab === 'import-history' && <ImportHistoryTab />}
           </div>
         </div>
       </div>

@@ -101,6 +101,20 @@ class WatchlistItem(Base):
     profile = relationship("Profile", back_populates="watchlist_items")
 
 
+class ImportLog(Base):
+    __tablename__ = "import_logs"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    title_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    tmdb_id: Mapped[int] = mapped_column(Integer, nullable=True, default=None)
+    media_type: Mapped[str] = mapped_column(String(10), nullable=False)
+    title_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=True, default=None)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="success")
+    error_message: Mapped[str] = mapped_column(Text, nullable=True, default=None)
+    imported_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class Subscription(Base):
     __tablename__ = "subscriptions"
 
