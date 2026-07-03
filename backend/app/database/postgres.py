@@ -1,3 +1,4 @@
+import re
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import DeclarativeBase
 from typing import AsyncGenerator
@@ -8,7 +9,16 @@ class Base(DeclarativeBase):
     pass
 
 
-engine = create_async_engine(settings.POSTGRES_URI, echo=settings.DEBUG, pool_pre_ping=True)
+_async_uri = settings.POSTGRES_URI
+_engine_kwargs = {"echo": settings.DEBUG, "pool_pre_ping": True}
+# Strip sslmode from async URI — asyncpg can't parse it; pass ssl via connect_args instead
+match = re.search(r"\?sslmode=(\w+)", _async_uri)
+if match:
+    _async_uri = re.sub(r"\?sslmode=\w+", "", _async_uri)
+    if match.group(1) == "require":
+        _engine_kwargs["connect_args"] = {"ssl": "require"}
+
+engine = create_async_engine(_async_uri, **_engine_kwargs)
 async_session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 

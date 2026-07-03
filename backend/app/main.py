@@ -18,7 +18,10 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await supabase.connect()
+    try:
+        await supabase.connect()
+    except Exception as e:
+        logger.warning("Supabase unavailable: %s", e)
     try:
         await postgres.connect()
     except Exception as e:
@@ -28,7 +31,10 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("Redis unavailable: %s", e)
     yield
-    await supabase.close()
+    try:
+        await supabase.close()
+    except Exception:
+        pass
     try:
         await postgres.close()
     except Exception:
@@ -47,9 +53,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+cors_origin_regex = r"https://.*\.vercel\.app"
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
+    allow_origin_regex=cors_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

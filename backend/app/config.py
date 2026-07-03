@@ -17,9 +17,9 @@ class Settings(BaseSettings):
     POSTGRES_URI_SYNC: str = "postgresql://watchme:watchme@localhost:5432/watchme"
 
     # Supabase
-    SUPABASE_URL: str = "https://fpplwgreqwmplmusjcfu.supabase.co"
-    SUPABASE_ANON_KEY: str = "sb_publishable_pPHrJba0jlcRCJx8xVKFxA_gaT1SUq6"
-    SUPABASE_SERVICE_KEY: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZwcGx3Z3JlcXdtcGxtdXNqY2Z1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4Mjk4MzEzNSwiZXhwIjoyMDk4NTU5MTM1fQ.H-ww-Ic1e31N1yjJJWZigv2zbec6Uu8z_56VbZcY9Vw"
+    SUPABASE_URL: str = ""
+    SUPABASE_ANON_KEY: str = ""
+    SUPABASE_SERVICE_KEY: str = ""
 
     # YouTube
     YOUTUBE_API_KEY: str = ""
@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # OAuth
+    OAUTH_REDIRECT_BASE_URL: str = ""
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
     GITHUB_CLIENT_ID: str = ""

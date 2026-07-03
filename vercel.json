@@ -9,6 +9,10 @@
       "destination": "https://watchme-0b0q.onrender.com/$1"
     },
     {
+      "source": "/ws/(.*)",
+      "destination": "https://watchme-0b0q.onrender.com/ws/$1"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

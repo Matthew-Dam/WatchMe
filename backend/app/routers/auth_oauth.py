@@ -12,8 +12,9 @@ from app.deps.db_deps import get_db_session
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
-GOOGLE_REDIRECT_URI = "http://localhost:5173/auth/google/callback"
-GITHUB_REDIRECT_URI = "http://localhost:5173/auth/github/callback"
+OAUTH_BASE_URL = settings.OAUTH_REDIRECT_BASE_URL or "http://localhost:5173"
+GOOGLE_REDIRECT_URI = f"{OAUTH_BASE_URL}/auth/google/callback"
+GITHUB_REDIRECT_URI = f"{OAUTH_BASE_URL}/auth/github/callback"
 
 
 class OAuthCallbackRequest(BaseModel):

@@ -48,7 +48,6 @@ class MediaService:
     async def get_media_info(self, key: str) -> dict:
         if not self.client:
             return {"key": key, "url": f"{settings.CDN_URL}/{settings.S3_BUCKET}/{key}"}
-            return {"key": key, "url": None}
         try:
             response = self.client.head_object(Bucket=settings.S3_BUCKET, Key=key)
             return {
