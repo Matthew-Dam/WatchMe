@@ -10,7 +10,6 @@ import { ProfileManagePage } from '@/pages/ProfileManagePage'
 import WatchPage from '@/pages/WatchPage'
 import MyListPage from '@/pages/MyListPage'
 import AdminPage from '@/pages/AdminPage'
-import { OAuthCallback } from '@/pages/OAuthCallback'
 import SubscriptionPage from '@/pages/SubscriptionPage'
 import WatchPartyPage from '@/pages/WatchPartyPage'
 import AboutPage from '@/pages/AboutPage'
@@ -23,8 +22,6 @@ export default function App() {
       <Route path="/" element={<Navigate to="/browse" replace />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
-      <Route path="/auth/google/callback" element={<OAuthCallback />} />
-      <Route path="/auth/github/callback" element={<OAuthCallback />} />
       <Route path="/profiles" element={<ProfileSelection />} />
       <Route path="/profile/manage" element={<ProfileManagePage />} />
       <Route
