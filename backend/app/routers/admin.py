@@ -50,15 +50,13 @@ async def list_imports(
     admin: dict = Depends(require_admin),
     db: AsyncSession = Depends(get_db_session),
 ):
-    user_id = admin["id"]
-    if isinstance(user_id, str):
-        user_id = uuid.UUID(user_id)
+    user_id = str(admin["id"])
     user_repo = UserRepository(db)
     imports = await user_repo.get_import_history(user_id)
     return {
         "items": [
             {
-                "id": str(i.id),
+                "id": i.id,
                 "title_name": i.title_name,
                 "tmdb_id": i.tmdb_id,
                 "media_type": i.media_type,
@@ -79,9 +77,7 @@ async def tmdb_import(
     admin: dict = Depends(require_admin),
     db: AsyncSession = Depends(get_db_session),
 ):
-    user_id = admin["id"]
-    if isinstance(user_id, str):
-        user_id = uuid.UUID(user_id)
+    user_id = str(admin["id"])
     user_repo = UserRepository(db)
     existing = await user_repo.check_imported(tmdb_id)
     if existing:

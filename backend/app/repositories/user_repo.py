@@ -148,14 +148,13 @@ class UserRepository:
         )
         return result.scalar_one_or_none()
 
-    async def log_import(self, user_id: uuid.UUID, title_name: str, tmdb_id: int, media_type: str, title_id: Optional[str], status: str = "success", error_message: Optional[str] = None) -> ImportLog:
+    async def log_import(self, user_id: str, title_name: str, tmdb_id: int, media_type: str, title_id: Optional[str], status: str = "success", error_message: Optional[str] = None) -> ImportLog:
         entry = ImportLog(
-            id=uuid.uuid4(),
             user_id=user_id,
             title_name=title_name,
             tmdb_id=tmdb_id,
             media_type=media_type,
-            title_id=uuid.UUID(title_id) if title_id else None,
+            title_id=title_id,
             status=status,
             error_message=error_message,
         )
@@ -163,7 +162,7 @@ class UserRepository:
         await self.db.flush()
         return entry
 
-    async def get_import_history(self, user_id: uuid.UUID, limit: int = 50) -> list[ImportLog]:
+    async def get_import_history(self, user_id: str, limit: int = 50) -> list[ImportLog]:
         result = await self.db.execute(
             select(ImportLog)
             .where(ImportLog.user_id == user_id)
