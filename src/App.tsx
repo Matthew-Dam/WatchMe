@@ -5,6 +5,7 @@ import { SearchPage } from '@/pages/SearchPage'
 import TitleDetailPage from '@/pages/TitleDetailPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { RegisterPage } from '@/pages/RegisterPage'
+import { OAuthCallback } from '@/pages/OAuthCallback'
 import { ProfileSelection } from '@/pages/ProfileSelection'
 import { ProfileManagePage } from '@/pages/ProfileManagePage'
 import WatchPage from '@/pages/WatchPage'
@@ -22,6 +23,7 @@ export default function App() {
       <Route path="/" element={<Navigate to="/browse" replace />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/auth/google/callback" element={<OAuthCallback />} />
       <Route path="/profiles" element={<ProfileSelection />} />
       <Route path="/profile/manage" element={<ProfileManagePage />} />
       <Route

@@ -50,7 +50,9 @@ async def list_imports(
     admin: dict = Depends(require_admin),
     db: AsyncSession = Depends(get_db_session),
 ):
-    user_id = uuid.UUID(admin["id"])
+    user_id = admin["id"]
+    if isinstance(user_id, str):
+        user_id = uuid.UUID(user_id)
     user_repo = UserRepository(db)
     imports = await user_repo.get_import_history(user_id)
     return {
@@ -62,7 +64,7 @@ async def list_imports(
                 "media_type": i.media_type,
                 "status": i.status,
                 "error_message": i.error_message,
-                "imported_at": i.imported_at.isoformat(),
+                "imported_at": i.imported_at.isoformat() if i.imported_at else None,
             }
             for i in imports
         ],
@@ -77,13 +79,17 @@ async def tmdb_import(
     admin: dict = Depends(require_admin),
     db: AsyncSession = Depends(get_db_session),
 ):
-    user_id = uuid.UUID(admin["id"])
+    user_id = admin["id"]
+    if isinstance(user_id, str):
+        user_id = uuid.UUID(user_id)
     user_repo = UserRepository(db)
     existing = await user_repo.check_imported(tmdb_id)
     if existing:
+        imported_at = existing.imported_at
+        date_str = imported_at.strftime("%Y-%m-%d %H:%M") if imported_at else "unknown"
         raise HTTPException(
             status_code=409,
-            detail=f'"{existing.title_name}" was already imported on {existing.imported_at.strftime("%Y-%m-%d %H:%M")}'
+            detail=f'"{existing.title_name}" was already imported on {date_str}'
         )
     tmdb = TMDBService()
     try:
@@ -100,7 +106,7 @@ async def tmdb_import(
     except HTTPException:
         raise
     except Exception as e:
-        await user_repo.log_import(user_id, f"TMDB #{tmdb_id}", tmdb_id, media_type, "", "failed", str(e))
+        await user_repo.log_import(user_id, f"TMDB #{tmdb_id}", tmdb_id, media_type, None, "failed", str(e))
         raise HTTPException(status_code=500, detail=f"Import failed: {e}")
     finally:
         await tmdb.close()
