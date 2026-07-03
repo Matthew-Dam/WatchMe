@@ -27,6 +27,14 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("PostgreSQL unavailable: %s", e)
     try:
+        from alembic.config import Config
+        from alembic import command
+        alembic_cfg = Config("alembic.ini")
+        command.upgrade(alembic_cfg, "head")
+        logger.info("Database migrations up to date")
+    except Exception as e:
+        logger.warning("Migration failed (non-fatal): %s", e)
+    try:
         await redis_client.connect()
     except Exception as e:
         logger.warning("Redis unavailable: %s", e)
