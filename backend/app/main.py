@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,16 +13,30 @@ from app.routers import auth, catalog, comments, ratings, watchlist, search, upl
 from app.routers import auth_oauth, stream, image_proxy
 from app.websocket.handlers import router as websocket_router
 
+logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await supabase.connect()
-    await postgres.connect()
-    await redis_client.connect()
+    try:
+        await postgres.connect()
+    except Exception as e:
+        logger.warning("PostgreSQL unavailable: %s", e)
+    try:
+        await redis_client.connect()
+    except Exception as e:
+        logger.warning("Redis unavailable: %s", e)
     yield
     await supabase.close()
-    await postgres.close()
-    await redis_client.close()
+    try:
+        await postgres.close()
+    except Exception:
+        pass
+    try:
+        await redis_client.close()
+    except Exception:
+        pass
 
 
 app = FastAPI(
