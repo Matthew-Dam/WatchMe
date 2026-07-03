@@ -36,7 +36,8 @@ async def lifespan(app: FastAPI):
         logger.warning("Migration failed (non-fatal): %s", e)
     try:
         from sqlalchemy import text
-        async with postgres.factory.begin() as conn:
+        from app.database.postgres import engine
+        async with engine.begin() as conn:
             await conn.execute(text("ALTER TABLE import_logs DROP CONSTRAINT IF EXISTS import_logs_user_id_fkey"))
             await conn.execute(text("ALTER TABLE import_logs ALTER COLUMN id TYPE VARCHAR(36) USING id::varchar"))
             await conn.execute(text("ALTER TABLE import_logs ALTER COLUMN user_id TYPE VARCHAR(36) USING user_id::varchar"))
