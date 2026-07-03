@@ -4,7 +4,8 @@ from app.database.supabase import supabase
 
 class CatalogRepository:
     async def create_title(self, data: dict) -> str:
-        result = await supabase.insert("titles", data, use_service_role=True)
+        insert_data = {k: v for k, v in data.items() if k not in ("tmdb_id",)}
+        result = await supabase.insert("titles", insert_data, use_service_role=True)
         return result["id"]
 
     async def update_title(self, title_id: str, data: dict) -> bool:

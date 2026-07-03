@@ -7,3 +7,4 @@ __pycache__/
 .DS_Store
 *.log
 backend/.venv/
+render_env_vars_to_set.txt
