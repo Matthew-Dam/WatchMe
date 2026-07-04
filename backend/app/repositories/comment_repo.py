@@ -21,7 +21,7 @@ class CommentRepository:
                 "profile_id": data["profile_id"],
                 "profile_name": data["profile_name"],
                 "text": data["text"],
-                "timestamp_seconds": data.get("timestamp_seconds", 0.0),
+                "timestamp_seconds": data["timestamp_seconds"] if data.get("timestamp_seconds") is not None else 0.0,
                 "parent_id": data.get("parent_id"),
                 "spoiler_tag": data.get("spoiler_tag", False),
                 "likes": 0,
