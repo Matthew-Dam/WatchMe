@@ -1,3 +1,4 @@
+import math
 from typing import Optional
 from fastapi import APIRouter, Query
 from app.schemas.catalog import SearchResponse
@@ -23,4 +24,7 @@ async def search(
     page_size: int = Query(20, ge=1, le=100),
 ):
     service = get_search_service()
-    return await service.search(q, genre, mood, content_type, year, has_trailer, page, page_size)
+    result = await service.search(q, genre, mood, content_type, year, has_trailer, page, page_size)
+    result["pages"] = math.ceil(result["total"] / page_size) if result["total"] > 0 else 0
+    result["size"] = page_size
+    return result

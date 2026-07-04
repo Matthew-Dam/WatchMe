@@ -12,6 +12,9 @@ export async function search(params: {
   year?: number
   has_trailer?: boolean
 }): Promise<PaginatedResponse<SearchResult>> {
-  const response = await api.get<PaginatedResponse<SearchResult>>('/search', { params })
+  const { query, ...rest } = params
+  const response = await api.get<PaginatedResponse<SearchResult>>('/search', {
+    params: { q: query, ...rest },
+  })
   return response.data
 }

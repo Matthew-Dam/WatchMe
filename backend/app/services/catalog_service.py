@@ -1,3 +1,4 @@
+import math
 from typing import Optional
 from app.repositories.catalog_repo import CatalogRepository
 
@@ -47,7 +48,7 @@ class CatalogService:
         if is_kid_mode:
             items = [t for t in items if not self._is_kid_restricted(t)]
             total = len(items)
-        return {"items": items, "total": total, "page": page, "page_size": page_size}
+        return {"items": items, "total": total, "page": page, "page_size": page_size, "pages": math.ceil(total / page_size) if total > 0 else 0, "size": page_size}
 
     async def get_featured(self, limit: int = 10, is_kid_mode: bool = False) -> list[dict]:
         titles = await self.repo.get_featured_titles(limit)
@@ -83,7 +84,7 @@ class CatalogService:
         if is_kid_mode:
             items = [t for t in items if not self._is_kid_restricted(t)]
             total = len(items)
-        return {"items": items, "total": total, "page": page, "page_size": page_size, "query": query}
+        return {"items": items, "total": total, "page": page, "page_size": page_size, "pages": math.ceil(total / page_size) if total > 0 else 0, "size": page_size, "query": query}
 
     def _is_kid_restricted(self, title: dict) -> bool:
         genre_names = [g.lower() if isinstance(g, str) else g.get("name", "").lower() for g in title.get("genres", [])]

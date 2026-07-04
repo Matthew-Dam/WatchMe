@@ -111,6 +111,8 @@ class TitleListSchema(BaseModel):
     total: int
     page: int
     page_size: int
+    pages: int = 0
+    size: int = 0
 
 
 class GenreSchema(BaseModel):
@@ -158,6 +160,8 @@ class SearchResponse(BaseModel):
     total: int
     page: int
     page_size: int
+    pages: int = 0
+    size: int = 0
     query: str
 
 
