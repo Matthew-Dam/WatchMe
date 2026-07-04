@@ -144,6 +144,26 @@ class SupabaseClient:
         resp.raise_for_status()
         return True
 
+    async def delete_many(
+        self, table: str,
+        filters: dict,
+        use_service_role: bool = False,
+    ) -> int:
+        if not self.client:
+            raise RuntimeError("Supabase not connected")
+        key = self._use_key(use_service_role)
+        headers = self._headers(key)
+        headers["Prefer"] = "count=exact"
+        resp = await self.client.delete(f"/rest/v1/{table}", params=filters, headers=headers)
+        if resp.status_code == 401:
+            raise PermissionError(f"API key lacks write access to {table}")
+        resp.raise_for_status()
+        count_str = resp.headers.get("content-range", "*/0").split("/")[-1]
+        try:
+            return int(count_str)
+        except (ValueError, IndexError):
+            return 0
+
     async def filter_in(
         self, table: str, column: str,
         values: list,

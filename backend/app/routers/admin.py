@@ -8,6 +8,7 @@ from app.repositories.user_repo import UserRepository
 from app.services.tmdb_service import TMDBService
 from app.services.internet_archive_service import InternetArchiveService
 from app.services.auto_classifier import enrich_with_tmdb, auto_classify, check_duplicate
+from app.services.content_agent import ContentAgent
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
@@ -684,6 +685,24 @@ async def backfill_moods(
             await repo.update_title(t["id"], ai)
             updated += 1
     return {"total": total, "updated": updated, "skipped": total - updated}
+
+
+@router.post("/clear-all")
+async def clear_all_titles(
+    admin: dict = Depends(require_admin),
+    db: AsyncSession = Depends(get_db_session),
+):
+    agent = ContentAgent(db)
+    return await agent.clear_all()
+
+
+@router.post("/run-pipeline")
+async def run_pipeline(
+    admin: dict = Depends(require_admin),
+    db: AsyncSession = Depends(get_db_session),
+):
+    agent = ContentAgent(db)
+    return await agent.run_full_pipeline()
 
 
 def _collection_name(slug: str) -> str:

@@ -4,6 +4,7 @@ import { usePlayerStore } from '@/stores/playerStore'
 import { useVideoProgress } from '@/hooks/useVideoProgress'
 import { getTitle } from '@/services/catalog'
 import { VideoPlayer, type VideoPlayerHandle } from '@/components/player/VideoPlayer'
+import { YouTubePlayer } from '@/components/player/YouTubePlayer'
 import { CommentPanel } from '@/components/comments/CommentPanel'
 import { ChatPanel } from '@/components/chat/ChatPanel'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
@@ -43,13 +44,23 @@ export default function WatchPage() {
     playerRef.current?.seek(time)
   }
 
+  function getYouTubeVideoId(): string | null {
+    const ytUrl = title?.hls_url?.youtube
+    if (!ytUrl) return null
+    const match = ytUrl.match(/(?:v=|youtu\.be\/)([\w-]+)/)
+    return match ? match[1] : null
+  }
+
   function getStreamUrl(): string {
+    if (title?.hls_url?.youtube) return ''
     const hlsDefault = title?.hls_url?.default
     if (hlsDefault?.endsWith('.mp4')) {
       return `/api/stream/${id}/video`
     }
     return `/api/stream/${id}/master.m3u8`
   }
+
+  const youtubeVideoId = getYouTubeVideoId()
 
   function getYear(): string {
     if (!title?.release_date) return ''
@@ -112,12 +123,20 @@ export default function WatchPage() {
           mobileOpen ? 'h-1/2 lg:h-full' : 'flex-1',
         )}>
           <div className="flex-1 flex flex-col min-h-0">
-            <VideoPlayer
-              ref={playerRef}
-              src={getStreamUrl()}
-              poster={title.backdrop_path ? `/api/image${title.backdrop_path}` : undefined}
-              titleId={id || ''}
-            />
+            {youtubeVideoId ? (
+              <YouTubePlayer
+                videoId={youtubeVideoId}
+                titleId={id || ''}
+                poster={title.backdrop_path ? `/api/image${title.backdrop_path}` : undefined}
+              />
+            ) : (
+              <VideoPlayer
+                ref={playerRef}
+                src={getStreamUrl()}
+                poster={title.backdrop_path ? `/api/image${title.backdrop_path}` : undefined}
+                titleId={id || ''}
+              />
+            )}
 
             {/* Video Info Bar (desktop: below player; mobile: hidden on mobile since it's in top bar) */}
             <div className="hidden lg:flex items-center gap-3 px-4 py-2.5 bg-surface/60 border-t border-border">

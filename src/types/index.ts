@@ -48,7 +48,7 @@ export interface Title {
   in_watchlist: boolean
   watch_progress: number | null
   trailer_url: string | null
-  hls_url: { default?: string } | null
+  hls_url: { default?: string; youtube?: string } | null
   created_at: string
   updated_at: string
 }

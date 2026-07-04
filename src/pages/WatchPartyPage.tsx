@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Avatar } from '@/components/ui/Avatar'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { VideoPlayer, type VideoPlayerHandle } from '@/components/player/VideoPlayer'
+import { YouTubePlayer } from '@/components/player/YouTubePlayer'
 import * as catalog from '@/services/catalog'
 import { cn } from '@/lib/utils'
 import { Users, Link, Play, Pause, ArrowLeft } from 'lucide-react'
@@ -255,12 +256,19 @@ export default function WatchPartyPage() {
 
       {titleData && (
         <div className="w-full bg-black">
-          <VideoPlayer
-            ref={playerRef}
-            src={titleData.hls_url?.default?.endsWith('.mp4') ? `/api/stream/${titleData.id}/video` : `/api/stream/${titleData.id}/master.m3u8`}
-            poster={titleData.backdrop_path ? `/api/image${titleData.backdrop_path}` : undefined}
-            titleId={titleData.id}
-          />
+          {titleData.hls_url?.youtube ? (
+            <YouTubePlayer videoId={(() => {
+              const m = titleData.hls_url!.youtube!.match(/(?:v=|youtu\.be\/)([\w-]+)/)
+              return m ? m[1] : ''
+            })()} titleId={titleData.id} />
+          ) : (
+            <VideoPlayer
+              ref={playerRef}
+              src={titleData.hls_url?.default?.endsWith('.mp4') ? `/api/stream/${titleData.id}/video` : `/api/stream/${titleData.id}/master.m3u8`}
+              poster={titleData.backdrop_path ? `/api/image${titleData.backdrop_path}` : undefined}
+              titleId={titleData.id}
+            />
+          )}
         </div>
       )}
 
