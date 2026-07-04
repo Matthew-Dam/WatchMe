@@ -1,52 +1,121 @@
+import uuid
 from typing import Optional
 from datetime import datetime, timezone
-from app.database.supabase import supabase
+from sqlalchemy import select, func, and_, or_, text
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.models.postgres_models import Comment
+from app.database.postgres import async_session_factory
 
 
 class CommentRepository:
     async def create(self, data: dict) -> str:
-        data["created_at"] = datetime.now(timezone.utc).isoformat()
-        data["likes"] = 0
-        result = await supabase.insert("comments", data, use_service_role=True)
-        return result["id"]
+        comment_id = uuid.uuid4()
+        async with async_session_factory() as db:
+            stmt = text("""
+                INSERT INTO comments (id, title_id, profile_id, profile_name, text, timestamp_seconds, parent_id, spoiler_tag, likes, is_deleted, created_at)
+                VALUES (:id, :title_id, :profile_id, :profile_name, :text, :timestamp_seconds, :parent_id, :spoiler_tag, :likes, :is_deleted, :created_at)
+            """)
+            await db.execute(stmt, {
+                "id": comment_id,
+                "title_id": data["title_id"],
+                "profile_id": data["profile_id"],
+                "profile_name": data["profile_name"],
+                "text": data["text"],
+                "timestamp_seconds": data.get("timestamp_seconds", 0.0),
+                "parent_id": data.get("parent_id"),
+                "spoiler_tag": data.get("spoiler_tag", False),
+                "likes": 0,
+                "is_deleted": False,
+                "created_at": datetime.now(timezone.utc),
+            })
+            await db.commit()
+        return str(comment_id)
 
     async def get_by_id(self, comment_id: str) -> Optional[dict]:
-        return await supabase.select_one("comments", comment_id)
+        async with async_session_factory() as db:
+            stmt = select(Comment).where(Comment.id == uuid.UUID(comment_id))
+            result = await db.execute(stmt)
+            comment = result.scalar_one_or_none()
+            if not comment:
+                return None
+            return self._to_dict(comment)
 
     async def update(self, comment_id: str, data: dict) -> bool:
-        data["edited_at"] = datetime.now(timezone.utc).isoformat()
-        return await supabase.update("comments", comment_id, data, use_service_role=True)
+        async with async_session_factory() as db:
+            stmt = select(Comment).where(Comment.id == uuid.UUID(comment_id))
+            result = await db.execute(stmt)
+            comment = result.scalar_one_or_none()
+            if not comment:
+                return False
+            for key, value in data.items():
+                if hasattr(comment, key):
+                    setattr(comment, key, value)
+            comment.edited_at = datetime.now(timezone.utc)
+            await db.commit()
+            return True
 
     async def delete(self, comment_id: str) -> bool:
-        return await supabase.update("comments", comment_id, {"is_deleted": True}, use_service_role=True)
+        return await self.update(comment_id, {"is_deleted": True})
 
     async def list_by_title(self, title_id: str, page: int = 1, page_size: int = 20, max_timestamp: Optional[float] = None, parent_id: Optional[str] = None) -> tuple[list[dict], int]:
-        filters = {"title_id": f"eq.{title_id}", "is_deleted": "eq.false"}
-        if max_timestamp is not None:
-            filters["timestamp_seconds"] = f"lte.{max_timestamp}"
-        if parent_id is not None:
-            filters["parent_id"] = f"eq.{parent_id}"
-        else:
-            filters["parent_id"] = "is.null"
-        items, total = await supabase.select(
-            "comments", "*", filters,
-            "created_at.desc", page_size, (page - 1) * page_size,
-        )
-        return items, total
+        async with async_session_factory() as db:
+            filters = [Comment.title_id == title_id, Comment.is_deleted == False]
+            if max_timestamp is not None:
+                filters.append(Comment.timestamp_seconds <= max_timestamp)
+            if parent_id is not None:
+                filters.append(Comment.parent_id == uuid.UUID(parent_id))
+            else:
+                filters.append(Comment.parent_id.is_(None))
+
+            count_q = select(func.count()).select_from(Comment).where(and_(*filters))
+            total_result = await db.execute(count_q)
+            total = total_result.scalar() or 0
+
+            q = select(Comment).where(and_(*filters)).order_by(Comment.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
+            result = await db.execute(q)
+            items = [self._to_dict(c) for c in result.scalars().all()]
+            return items, total
 
     async def toggle_like(self, comment_id: str, increment: bool = True) -> int:
-        comment = await self.get_by_id(comment_id)
-        if not comment:
-            return 0
-        current = comment.get("likes", 0)
-        new_count = current + (1 if increment else -1)
-        await supabase.update("comments", comment_id, {"likes": new_count}, use_service_role=True)
-        return new_count
+        async with async_session_factory() as db:
+            stmt = select(Comment).where(Comment.id == uuid.UUID(comment_id))
+            result = await db.execute(stmt)
+            comment = result.scalar_one_or_none()
+            if not comment:
+                return 0
+            if increment:
+                comment.likes += 1
+            else:
+                comment.likes -= 1
+            await db.commit()
+            return comment.likes
 
     async def get_replies(self, comment_id: str, page: int = 1, page_size: int = 20) -> tuple[list[dict], int]:
-        filters = {"parent_id": f"eq.{comment_id}", "is_deleted": "eq.false"}
-        items, total = await supabase.select(
-            "comments", "*", filters,
-            "created_at.asc", page_size, (page - 1) * page_size,
-        )
-        return items, total
+        async with async_session_factory() as db:
+            filters = [Comment.parent_id == uuid.UUID(comment_id), Comment.is_deleted == False]
+            count_q = select(func.count()).select_from(Comment).where(and_(*filters))
+            total_result = await db.execute(count_q)
+            total = total_result.scalar() or 0
+
+            q = select(Comment).where(and_(*filters)).order_by(Comment.created_at.asc()).offset((page - 1) * page_size).limit(page_size)
+            result = await db.execute(q)
+            items = [self._to_dict(c) for c in result.scalars().all()]
+            return items, total
+
+    def _to_dict(self, c: Comment) -> dict:
+        return {
+            "id": str(c.id),
+            "title_id": c.title_id,
+            "profile_id": str(c.profile_id),
+            "profile_name": c.profile_name,
+            "text": c.text,
+            "timestamp_seconds": c.timestamp_seconds,
+            "parent_id": str(c.parent_id) if c.parent_id else None,
+            "spoiler_tag": c.spoiler_tag,
+            "likes": c.likes,
+            "is_deleted": c.is_deleted,
+            "avatar_url": None,
+            "replies": [],
+            "created_at": c.created_at.isoformat() if c.created_at else datetime.now(timezone.utc).isoformat(),
+            "edited_at": c.edited_at.isoformat() if c.edited_at else None,
+        }

@@ -45,7 +45,7 @@ async def lifespan(app: FastAPI):
             logger.info("import_logs columns migrated to VARCHAR")
             await conn.execute(text("ALTER TABLE comments DROP CONSTRAINT IF EXISTS comments_profile_id_fkey"))
             await conn.execute(text("ALTER TABLE comments DROP CONSTRAINT IF EXISTS comments_title_id_fkey"))
-            logger.info("dropped foreign key constraints on comments table")
+            logger.info("foreign key constraints dropped on comments table")
     except Exception as e:
         logger.warning("comments FK drop skipped: %s", e)
     try:

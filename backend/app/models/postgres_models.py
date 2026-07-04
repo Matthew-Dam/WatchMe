@@ -115,6 +115,23 @@ class ImportLog(Base):
     imported_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class Comment(Base):
+    __tablename__ = "comments"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    title_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    profile_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    profile_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    timestamp_seconds: Mapped[float] = mapped_column(Float, default=0.0)
+    parent_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=True, default=None)
+    spoiler_tag: Mapped[bool] = mapped_column(Boolean, default=False)
+    likes: Mapped[int] = mapped_column(Integer, default=0)
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    edited_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
+
+
 class Subscription(Base):
     __tablename__ = "subscriptions"
 
