@@ -1,24 +1,28 @@
-from typing import Callable
-from fastapi import Request
 from fastapi.responses import JSONResponse
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.types import ASGIApp, Scope, Receive, Send
 
 
-class ErrorHandlingMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next: Callable):
-        if request.url.path.startswith("/ws"):
-            return await call_next(request)
+class ErrorHandlingMiddleware:
+    def __init__(self, app: ASGIApp):
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
         try:
-            response = await call_next(request)
-            return response
+            await self.app(scope, receive, send)
         except ValueError as e:
-            return JSONResponse(status_code=400, content={"detail": str(e)})
+            resp = JSONResponse(status_code=400, content={"detail": str(e)})
+            await resp(scope, receive, send)
         except PermissionError as e:
-            return JSONResponse(status_code=403, content={"detail": str(e)})
+            resp = JSONResponse(status_code=403, content={"detail": str(e)})
+            await resp(scope, receive, send)
         except Exception as e:
             import traceback
             traceback.print_exc()
-            return JSONResponse(status_code=500, content={"detail": str(e), "type": type(e).__name__})
+            resp = JSONResponse(status_code=500, content={"detail": str(e), "type": type(e).__name__})
+            await resp(scope, receive, send)
 
 
 error_handling_middleware = ErrorHandlingMiddleware
