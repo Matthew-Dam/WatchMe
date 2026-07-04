@@ -181,3 +181,15 @@ export async function bulkImportIATop(limit: number = 20): Promise<BulkImportRes
   })
   return response.data
 }
+
+export async function clearAllTitles(): Promise<{ deleted_titles: number; deleted_imports: boolean }> {
+  const response = await api.post('/admin/clear-all')
+  return response.data
+}
+
+export async function runFullPipeline(): Promise<{
+  imported: number; skipped: number; failed: number; trailers: number; watchable: number
+}> {
+  const response = await api.post('/admin/run-pipeline')
+  return response.data
+}

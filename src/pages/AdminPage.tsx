@@ -12,6 +12,7 @@ import {
   bulkImportTMDB, bulkImportIATop, bulkImportIACollection,
   searchIA, getTMDBByGenre,
   getIACollections, backfillTrailers, backfillMoods,
+  clearAllTitles, runFullPipeline,
   type TMDBResult, type ImportLogEntry, type BulkImportResponse,
   type IACollection,
 } from '@/services/admin'
@@ -766,10 +767,42 @@ function BulkImportTab() {
           <Button variant="outline" size="sm" onClick={handleBackfillMoods} isLoading={importing === 'moods'}>
             Backfill AI Moods & Categories
           </Button>
+          <Button variant="outline" size="sm" onClick={handleClearAll} isLoading={importing === 'clear'}>
+            Clear All Titles
+          </Button>
+          <Button variant="primary" size="sm" onClick={handleRunPipeline} isLoading={importing === 'pipeline'}>
+            Run Full Pipeline (Clear + Re-import All)
+          </Button>
         </div>
       </div>
     </div>
   )
+
+  async function handleClearAll() {
+    if (!window.confirm('DANGER: This will delete ALL titles and imports. Are you sure?')) return
+    setImporting('clear')
+    try {
+      const res = await clearAllTitles()
+      toast.success(`Deleted ${res.deleted_titles} titles`)
+    } catch {
+      toast.error('Clear failed')
+    } finally {
+      setImporting(null)
+    }
+  }
+
+  async function handleRunPipeline() {
+    if (!window.confirm('This will clear ALL existing titles and re-import fresh content. Continue?')) return
+    setImporting('pipeline')
+    try {
+      const res = await runFullPipeline()
+      toast.success(`Pipeline done! ${res.imported} imported, ${res.watchable} watchable, ${res.trailers} trailers`)
+    } catch {
+      toast.error('Pipeline failed')
+    } finally {
+      setImporting(null)
+    }
+  }
 }
 
 type Tab = 'add-movie' | 'manage-titles' | 'import-history' | 'tmdb-import' | 'ia-import' | 'bulk-import'
