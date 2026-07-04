@@ -237,11 +237,6 @@ class ContentAgent:
     async def _tmdb_import_one(self, tmdb_id: int, media_type: str) -> bool:
         tmdb = TMDBService()
         try:
-            existing = await self.user_repo.check_imported(tmdb_id)
-            if existing:
-                self.stats["skipped"] += 1
-                return False
-
             data = await tmdb.get_movie_details(tmdb_id) if media_type == "movie" else await tmdb.get_tv_details(tmdb_id)
             if not data:
                 self.stats["failed"] += 1
@@ -249,6 +244,11 @@ class ContentAgent:
 
             title = data.get("title", "")
             year = data.get("year")
+
+            dup = await check_duplicate(self.db, title, year, tmdb_id)
+            if dup:
+                self.stats["skipped"] += 1
+                return False
 
             trailer_url = await tmdb.get_videos(tmdb_id, media_type)
             if trailer_url:

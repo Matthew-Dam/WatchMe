@@ -193,3 +193,8 @@ export async function runFullPipeline(): Promise<{
   const response = await api.post('/admin/run-pipeline')
   return response.data
 }
+
+export async function dedupTitles(): Promise<{ total_checked: number; duplicates_removed: number; kept: number }> {
+  const response = await api.post('/admin/dedup')
+  return response.data
+}

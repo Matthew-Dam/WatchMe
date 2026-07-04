@@ -705,6 +705,54 @@ async def run_pipeline(
     return await agent.run_full_pipeline()
 
 
+@router.post("/dedup")
+async def dedup_titles(
+    admin: dict = Depends(require_admin),
+    db: AsyncSession = Depends(get_db_session),
+):
+    from app.services.auto_classifier import check_duplicate
+    repo = CatalogRepository()
+    user_repo = UserRepository(db)
+    all_imports = await user_repo.get_all_successful_imports()
+
+    seen: dict[str, str] = {}
+    to_delete: list[str] = []
+    kept = 0
+
+    for imp in all_imports:
+        if not imp.title_id:
+            continue
+        key = str(imp.tmdb_id) if imp.tmdb_id else (imp.title_name or "").lower().strip()
+        if key in seen:
+            to_delete.append(imp.title_id)
+        else:
+            seen[key] = imp.title_id
+            kept += 1
+
+    items, total = await repo.list_titles({}, page=1, page_size=500)
+    title_seen: dict[str, str] = {}
+    for t in items:
+        norm = (t.get("title") or "").lower().strip()
+        if norm in title_seen:
+            to_delete.append(t["id"])
+        else:
+            title_seen[norm] = t["id"]
+            for other_norm, other_id in list(title_seen.items()):
+                if other_norm != norm and len(other_norm) > 3 and (norm in other_norm or other_norm in norm):
+                    to_delete.append(t["id"])
+                    break
+
+    deleted = 0
+    for tid in set(to_delete):
+        try:
+            await repo.update_title(tid, {"is_published": False})
+            deleted += 1
+        except Exception:
+            pass
+
+    return {"total_checked": total, "duplicates_removed": deleted, "kept": kept}
+
+
 def _collection_name(slug: str) -> str:
     names = {
         "classic-horror": "Classic Horror",

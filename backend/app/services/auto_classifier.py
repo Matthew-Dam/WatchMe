@@ -104,28 +104,30 @@ async def check_duplicate(
             return existing.title_id
 
     repo = CatalogRepository()
-    items, _ = await repo.list_titles({}, page=1, page_size=50)
     normalized = title.lower().strip()
-    for t in items:
-        t_title = (t.get("title") or "").lower().strip()
-        if t_title == normalized:
-            t_year = t.get("year") or t.get("release_date", "")[:4]
-            if year and t_year:
-                try:
-                    if abs(int(t_year) - year) <= 1:
-                        return t["id"]
-                except (ValueError, TypeError):
-                    return t["id"]
-            else:
+    page = 1
+    while True:
+        items, _ = await repo.list_titles({}, page=page, page_size=100)
+        if not items:
+            break
+        for t in items:
+            t_title = (t.get("title") or "").lower().strip()
+            if t_title == normalized:
                 return t["id"]
-        if normalized in t_title or t_title in normalized:
-            if year and t_year:
+            t_year = t.get("year")
+            if t_year:
                 try:
-                    if abs(int(t_year) - year) <= 2:
-                        return t["id"]
-                except (ValueError, TypeError):
-                    pass
-
+                    t_year = int(t_year)
+                except (TypeError, ValueError):
+                    t_year = None
+            if normalized in t_title or t_title in normalized:
+                if year and t_year and abs(year - t_year) <= 2:
+                    return t["id"]
+                if not year:
+                    return t["id"]
+        if len(items) < 100:
+            break
+        page += 1
     return None
 
 

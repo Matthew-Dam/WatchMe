@@ -12,7 +12,7 @@ import {
   bulkImportTMDB, bulkImportIATop, bulkImportIACollection,
   searchIA, getTMDBByGenre,
   getIACollections, backfillTrailers, backfillMoods,
-  clearAllTitles, runFullPipeline,
+  clearAllTitles, runFullPipeline, dedupTitles,
   type TMDBResult, type ImportLogEntry, type BulkImportResponse,
   type IACollection,
 } from '@/services/admin'
@@ -773,6 +773,9 @@ function BulkImportTab() {
           <Button variant="primary" size="sm" onClick={handleRunPipeline} isLoading={importing === 'pipeline'}>
             Run Full Pipeline (Clear + Re-import All)
           </Button>
+          <Button variant="outline" size="sm" onClick={handleDedup} isLoading={importing === 'dedup'}>
+            Remove Duplicates
+          </Button>
         </div>
       </div>
     </div>
@@ -799,6 +802,18 @@ function BulkImportTab() {
       toast.success(`Pipeline done! ${res.imported} imported, ${res.watchable} watchable, ${res.trailers} trailers`)
     } catch {
       toast.error('Pipeline failed')
+    } finally {
+      setImporting(null)
+    }
+  }
+
+  async function handleDedup() {
+    setImporting('dedup')
+    try {
+      const res = await dedupTitles()
+      toast.success(`Removed ${res.duplicates_removed} duplicates, kept ${res.kept}`)
+    } catch {
+      toast.error('Dedup failed')
     } finally {
       setImporting(null)
     }
