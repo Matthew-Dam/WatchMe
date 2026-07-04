@@ -86,8 +86,9 @@ export function CommentItem({ comment, currentTime, onSeek, hasTimestamp, titleI
       comment.replies = [...(comment.replies || []), newReply]
       setReplyText('')
       setShowReply(false)
-    } catch (err) {
-      setReplyError(err instanceof Error ? err.message : 'Failed to post reply')
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      setReplyError(detail || (err instanceof Error ? err.message : 'Failed to post reply'))
     } finally {
       setPostingReply(false)
     }

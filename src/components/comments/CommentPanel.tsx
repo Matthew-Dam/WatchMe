@@ -64,8 +64,9 @@ export function CommentPanel({ titleId, currentTime, onSeek }: CommentPanelProps
       setText('')
       setIsSpoiler(false)
       setIncludeTimestamp(false)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to post comment')
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      setError(detail || (err instanceof Error ? err.message : 'Failed to post comment'))
     } finally {
       setPosting(false)
     }
