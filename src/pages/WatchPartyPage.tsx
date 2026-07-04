@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
-import { useWebSocket } from '@/hooks/useWebSocket'
+import { useSSE } from '@/hooks/useSSE'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Badge } from '@/components/ui/Badge'
@@ -65,12 +65,9 @@ export default function WatchPartyPage() {
   if (tokens?.access_token) params.set('token', tokens.access_token)
   if (currentProfile?.id) params.set('profile_id', currentProfile.id)
   const query = params.toString()
-  const WS_BASE = import.meta.env.VITE_WS_URL || ''
-  const wsUrl = WS_BASE
-    ? `${WS_BASE}/ws/watch-party/${resolvedPartyId}${query ? `?${query}` : ''}`
-    : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/watch-party/${resolvedPartyId}${query ? `?${query}` : ''}`
+  const sseUrl = query ? `/api/events/watch-party/${resolvedPartyId}?${query}` : ''
 
-  const { sendMessage, connected } = useWebSocket(wsUrl, {
+  const { connected } = useSSE(sseUrl, {
     onMessage: (data: unknown) => {
       const msg = data as {
         type?: string
@@ -101,16 +98,31 @@ export default function WatchPartyPage() {
     },
   })
 
+  async function sendPartyEvent(eventType: string, extra: Record<string, unknown> = {}) {
+    if (!tokens?.access_token || !currentProfile?.id) return
+    const ep = `/api/watch-party/${resolvedPartyId}/event`
+    const p = new URLSearchParams()
+    p.set('token', tokens.access_token)
+    p.set('event_type', eventType)
+    p.set('profile_id', currentProfile.id)
+    p.set('username', currentProfile.name)
+    if (currentProfile.avatar_url) p.set('avatar_url', currentProfile.avatar_url)
+    for (const [k, v] of Object.entries(extra)) {
+      if (v !== undefined) p.set(k, String(v))
+    }
+    try {
+      await fetch(ep, { method: 'POST', body: p })
+    } catch {
+      // ignore
+    }
+  }
+
   useEffect(() => {
     if (connected && currentProfile) {
-      sendMessage({
-        type: 'join',
-        profile_id: currentProfile.id,
-        username: currentProfile.name,
-        avatar_url: currentProfile.avatar_url,
-      })
+      sendPartyEvent('join')
+      return () => { sendPartyEvent('leave') }
     }
-  }, [connected, currentProfile, sendMessage])
+  }, [connected, currentProfile])
 
   useEffect(() => {
     if (playback.isPlaying) {
@@ -129,21 +141,21 @@ export default function WatchPartyPage() {
 
   const handlePlay = useCallback(() => {
     const ct = playerRef.current?.getCurrentTime() ?? playback.currentTime
-    sendMessage({ type: 'play', current_time: ct })
+    sendPartyEvent('play', { current_time: ct })
     setPlayback((p) => ({ ...p, isPlaying: true }))
-  }, [sendMessage, playback.currentTime])
+  }, [playback.currentTime])
 
   const handlePause = useCallback(() => {
     const ct = playerRef.current?.getCurrentTime() ?? playback.currentTime
-    sendMessage({ type: 'pause', current_time: ct })
+    sendPartyEvent('pause', { current_time: ct })
     setPlayback((p) => ({ ...p, isPlaying: false }))
-  }, [sendMessage, playback.currentTime])
+  }, [playback.currentTime])
 
   const handleSeek = useCallback((time: number) => {
     playerRef.current?.seek(time)
-    sendMessage({ type: 'seek', current_time: time })
+    sendPartyEvent('seek', { current_time: time })
     setPlayback((p) => ({ ...p, currentTime: time }))
-  }, [sendMessage])
+  }, [])
 
   async function createParty() {
     if (!titleId.trim()) {

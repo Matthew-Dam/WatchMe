@@ -11,7 +11,8 @@ from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.error_handler import ErrorHandlingMiddleware
 from app.routers import auth, catalog, comments, ratings, watchlist, search, upload, titles, subscriptions, admin
 from app.routers import auth_oauth, stream, image_proxy
-from app.websocket.handlers import router as websocket_router
+from app.routers.chat_sse import router as chat_sse_router
+from app.routers.watch_party_sse import router as watch_party_sse_router
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +101,8 @@ app.include_router(auth_oauth.router)
 app.include_router(admin.router)
 app.include_router(stream.router)
 app.include_router(image_proxy.router)
-app.include_router(websocket_router)
+app.include_router(chat_sse_router)
+app.include_router(watch_party_sse_router)
 
 if settings.DEBUG:
     import os

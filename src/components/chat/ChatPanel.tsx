@@ -3,8 +3,9 @@ import type { ChatMessage as ChatMessageType } from '@/types'
 import { ChatMessage } from './ChatMessage'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
-import { useWebSocket } from '@/hooks/useWebSocket'
+import { useSSE } from '@/hooks/useSSE'
 import { useAuthStore } from '@/stores/authStore'
+import { sendChatMessage } from '@/services/chat'
 import { cn } from '@/lib/utils'
 import { MessageSquare, Send } from 'lucide-react'
 
@@ -23,17 +24,17 @@ export function ChatPanel({ titleId }: ChatPanelProps) {
   const [rateWarning, setRateWarning] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const sentTimestamps = useRef<number[]>([])
+  const connectedRef = useRef(false)
 
   const params = new URLSearchParams()
   if (tokens?.access_token) params.set('token', tokens.access_token)
   if (currentProfile?.id) params.set('profile_id', currentProfile.id)
   const query = params.toString()
-  const WS_BASE = (import.meta.env.VITE_WS_URL || '').replace(/\/+$/, '').replace(/\/ws$/, '')
-  const wsUrl = WS_BASE
-    ? `${WS_BASE}/ws/chat/${titleId}${query ? `?${query}` : ''}`
-    : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/chat/${titleId}${query ? `?${query}` : ''}`
+  const sseUrl = query
+    ? `/api/events/chat/${titleId}?${query}`
+    : ''
 
-  const { sendMessage, connected, error } = useWebSocket(wsUrl, {
+  const { connected, error } = useSSE(sseUrl, {
     onMessage: (data: unknown) => {
       const msg = data as { type?: string; id?: string; user_id?: string; username?: string; avatar_url?: string | null; content?: string; is_system?: boolean; created_at?: string }
       if (msg.type === 'message' || msg.type === 'system') {
@@ -56,6 +57,10 @@ export function ChatPanel({ titleId }: ChatPanelProps) {
   })
 
   useEffect(() => {
+    connectedRef.current = connected
+  }, [connected])
+
+  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
@@ -71,13 +76,17 @@ export function ChatPanel({ titleId }: ChatPanelProps) {
     return true
   }
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    if (!text.trim() || !connected) return
+    if (!text.trim() || !connectedRef.current || !tokens?.access_token || !currentProfile?.id) return
     if (!checkRateLimit()) return
 
-    sendMessage({ type: 'message', content: text.trim(), title_id: titleId })
-    setText('')
+    try {
+      await sendChatMessage(titleId, tokens.access_token, currentProfile.id, text.trim())
+      setText('')
+    } catch {
+      // error logged via api interceptor
+    }
   }
 
   return (
