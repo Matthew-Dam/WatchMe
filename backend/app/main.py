@@ -43,8 +43,24 @@ async def lifespan(app: FastAPI):
             await conn.execute(text("ALTER TABLE import_logs ALTER COLUMN user_id TYPE VARCHAR(36) USING user_id::varchar"))
             await conn.execute(text("ALTER TABLE import_logs ALTER COLUMN title_id TYPE VARCHAR(36) USING title_id::varchar"))
             logger.info("import_logs columns migrated to VARCHAR")
+            await conn.execute(text("""
+                DO $$
+                DECLARE
+                    r record;
+                BEGIN
+                    FOR r IN (
+                        SELECT con.conname
+                        FROM pg_constraint con
+                        JOIN pg_class rel ON rel.oid = con.conrelid
+                        WHERE rel.relname = 'comments' AND con.contype = 'f'
+                    ) LOOP
+                        EXECUTE 'ALTER TABLE comments DROP CONSTRAINT IF EXISTS ' || quote_ident(r.conname);
+                    END LOOP;
+                END $$;
+            """))
+            logger.info("dropped foreign key constraints on comments table")
     except Exception as e:
-        logger.warning("import_logs migration fix skipped: %s", e)
+        logger.warning("comments FK drop skipped: %s", e)
     try:
         await redis_client.connect()
     except Exception as e:

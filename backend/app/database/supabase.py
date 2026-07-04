@@ -99,6 +99,12 @@ class SupabaseClient:
         resp = await self.client.post(f"/rest/v1/{table}", json=data, headers=headers)
         if resp.status_code == 401:
             raise PermissionError(f"API key lacks write access to {table}")
+        if resp.status_code >= 400:
+            try:
+                body = resp.json()
+            except Exception:
+                body = resp.text
+            raise RuntimeError(f"Supabase {table} insert failed (HTTP {resp.status_code}): {body}")
         resp.raise_for_status()
         result = resp.json()
         return result[0] if isinstance(result, list) and result else result
