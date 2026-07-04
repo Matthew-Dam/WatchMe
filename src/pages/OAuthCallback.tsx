@@ -23,10 +23,11 @@ export function OAuthCallback() {
 
     async function handleCallback() {
       try {
+        const redirectUri = `${window.location.origin}/auth/${provider}/callback`
         const res = await fetch('/api/auth/oauth/callback', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code, provider }),
+          body: JSON.stringify({ code, provider, redirect_uri: redirectUri }),
         })
         if (!res.ok) {
           const err = await res.json()

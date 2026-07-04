@@ -129,7 +129,7 @@ class CatalogRepository:
                     sb_filters["year"] = f"eq.{value}"
                 elif key == "has_trailer" and value:
                     sb_filters["trailer_url"] = "not.is.null"
-        search_filter = f"(title.ilike.%{query}%,overview.ilike.%{query}%)"
+        search_filter = f"(title.ilike.%{query}%,description.ilike.%{query}%)"
         sb_filters["or"] = search_filter
         items, total = await supabase.select(
             "titles", "*",

@@ -12,24 +12,33 @@ from app.deps.db_deps import get_db_session
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
-OAUTH_BASE_URL = settings.OAUTH_REDIRECT_BASE_URL or "http://localhost:5173"
-GOOGLE_REDIRECT_URI = f"{OAUTH_BASE_URL}/auth/google/callback"
-GITHUB_REDIRECT_URI = f"{OAUTH_BASE_URL}/auth/github/callback"
-
-
 class OAuthCallbackRequest(BaseModel):
     code: str
     provider: str
+    redirect_uri: Optional[str] = None
+
+
+def _oauth_base_url(request: Optional[Request] = None) -> str:
+    if settings.OAUTH_REDIRECT_BASE_URL:
+        return settings.OAUTH_REDIRECT_BASE_URL
+    if request:
+        origin = request.headers.get("origin") or request.headers.get("referer", "")
+        if origin and "://" in origin:
+            return origin.rstrip("/")
+    return "http://localhost:5173"
 
 
 @router.get("/oauth/{provider}/login")
-async def oauth_login(provider: str):
+async def oauth_login(provider: str, request: Request):
+    base_url = _oauth_base_url(request)
+    google_redirect = f"{base_url}/auth/google/callback"
+    github_redirect = f"{base_url}/auth/github/callback"
     if provider == "google":
         if not settings.GOOGLE_CLIENT_ID:
             raise HTTPException(status_code=501, detail="Google OAuth not configured")
         params = {
             "client_id": settings.GOOGLE_CLIENT_ID,
-            "redirect_uri": GOOGLE_REDIRECT_URI,
+            "redirect_uri": google_redirect,
             "response_type": "code",
             "scope": "openid email profile",
             "access_type": "offline",
@@ -41,7 +50,7 @@ async def oauth_login(provider: str):
             raise HTTPException(status_code=501, detail="GitHub OAuth not configured")
         params = {
             "client_id": settings.GITHUB_CLIENT_ID,
-            "redirect_uri": GITHUB_REDIRECT_URI,
+            "redirect_uri": github_redirect,
             "scope": "user:email",
         }
         query = "&".join(f"{k}={v}" for k, v in params.items())
@@ -57,6 +66,10 @@ async def oauth_callback(
     provider = req.provider
     code = req.code
 
+    base_url = req.redirect_uri or _oauth_base_url()
+    google_redirect = f"{base_url.rstrip('/')}/auth/google/callback"
+    github_redirect = f"{base_url.rstrip('/')}/auth/github/callback"
+
     if provider == "google":
         if not settings.GOOGLE_CLIENT_ID:
             raise HTTPException(status_code=501, detail="Google OAuth not configured")
@@ -65,7 +78,7 @@ async def oauth_callback(
             "code": code,
             "client_id": settings.GOOGLE_CLIENT_ID,
             "client_secret": settings.GOOGLE_CLIENT_SECRET,
-            "redirect_uri": GOOGLE_REDIRECT_URI,
+            "redirect_uri": google_redirect,
             "grant_type": "authorization_code",
         }
         async with AsyncClient() as client:
@@ -93,7 +106,7 @@ async def oauth_callback(
             "code": code,
             "client_id": settings.GITHUB_CLIENT_ID,
             "client_secret": settings.GITHUB_CLIENT_SECRET,
-            "redirect_uri": GITHUB_REDIRECT_URI,
+            "redirect_uri": github_redirect,
         }
         headers = {"Accept": "application/json"}
         async with AsyncClient() as client:
