@@ -29,7 +29,7 @@ async def _verify_token(token: str, profile_id: str) -> dict | None:
             return None
         return {
             "id": str(profile.id),
-            "user_id": str(user.id),
+            "user_id": str(user["id"]),
             "name": profile.name,
             "avatar_url": profile.avatar_url,
         }

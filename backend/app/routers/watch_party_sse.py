@@ -21,7 +21,7 @@ async def _verify_token(token: str) -> dict | None:
         user = await auth_service.get_user(user_id)
         if not user:
             return None
-        return {"id": str(user.id), "email": user.get("email", "")}
+        return {"id": str(user["id"]), "email": user.get("email", "")}
 
 
 async def _event_generator(room: str):
