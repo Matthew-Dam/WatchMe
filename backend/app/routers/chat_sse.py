@@ -2,7 +2,7 @@ import json
 import uuid
 import asyncio
 from datetime import datetime, timezone
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, HTTPException, Query
 from starlette.responses import StreamingResponse
 from app.database.postgres import async_session_factory
 from app.repositories.user_repo import UserRepository
@@ -57,20 +57,23 @@ async def chat_sse(
     profile = await _verify_token(token, profile_id)
     if not profile:
         raise HTTPException(status_code=401, detail="Invalid auth")
-    chat_repo = ChatRepository()
-    raw_history = await chat_repo.get_messages(title_id, 50)
-    history = []
-    for m in raw_history:
-        history.append({
-            "id": m.get("id", ""),
-            "user_id": m.get("profile_id", ""),
-            "username": m.get("profile_name", "Unknown"),
-            "avatar_url": m.get("avatar_url"),
-            "title_id": title_id,
-            "content": m.get("text", ""),
-            "is_system": False,
-            "created_at": m.get("created_at", ""),
-        })
+    history: list[dict] = []
+    try:
+        chat_repo = ChatRepository()
+        raw_history = await chat_repo.get_messages(title_id, 50)
+        for m in raw_history:
+            history.append({
+                "id": m.get("id", ""),
+                "user_id": m.get("profile_id", ""),
+                "username": m.get("profile_name", "Unknown"),
+                "avatar_url": m.get("avatar_url"),
+                "title_id": title_id,
+                "content": m.get("text", ""),
+                "is_system": False,
+                "created_at": m.get("created_at", ""),
+            })
+    except Exception:
+        pass
     room = f"chat:{title_id}"
     return StreamingResponse(
         _event_generator(room, history),
@@ -102,19 +105,26 @@ async def send_chat_message(
         "text": content,
         "timestamp_seconds": timestamp_seconds,
     }
-    chat_repo = ChatRepository()
-    saved = await chat_repo.save_message(raw_message)
     broadcast_msg = {
         "type": "message",
-        "id": saved.get("id", str(uuid.uuid4())),
+        "id": str(uuid.uuid4()),
         "user_id": profile["id"],
         "username": profile["name"],
         "avatar_url": profile["avatar_url"],
         "title_id": title_id,
         "content": content,
         "is_system": False,
-        "created_at": saved.get("created_at", datetime.now(timezone.utc).isoformat()),
+        "created_at": datetime.now(timezone.utc).isoformat(),
     }
+    try:
+        chat_repo = ChatRepository()
+        saved = await chat_repo.save_message(raw_message)
+        if saved and saved.get("id"):
+            broadcast_msg["id"] = saved["id"]
+        if saved and saved.get("created_at"):
+            broadcast_msg["created_at"] = saved["created_at"]
+    except Exception:
+        pass
     room = f"chat:{title_id}"
     await chat_sse_manager.broadcast(room, broadcast_msg)
     return broadcast_msg
