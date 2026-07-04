@@ -1,4 +1,5 @@
 import uuid
+import urllib.parse
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
@@ -15,16 +16,18 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 class OAuthCallbackRequest(BaseModel):
     code: str
     provider: str
-    redirect_uri: Optional[str] = None
 
 
 def _oauth_base_url(request: Optional[Request] = None) -> str:
     if settings.OAUTH_REDIRECT_BASE_URL:
         return settings.OAUTH_REDIRECT_BASE_URL
     if request:
-        origin = request.headers.get("origin") or request.headers.get("referer", "")
+        origin = request.headers.get("origin", "")
         if origin and "://" in origin:
             return origin.rstrip("/")
+        referer = request.headers.get("referer", "")
+        if referer and "://" in referer:
+            return referer.rstrip("/").split("?")[0].split("#")[0]
     return "http://localhost:5173"
 
 
@@ -43,7 +46,7 @@ async def oauth_login(provider: str, request: Request):
             "scope": "openid email profile",
             "access_type": "offline",
         }
-        query = "&".join(f"{k}={v}" for k, v in params.items())
+        query = urllib.parse.urlencode(params)
         return {"url": f"https://accounts.google.com/o/oauth2/v2/auth?{query}"}
     elif provider == "github":
         if not settings.GITHUB_CLIENT_ID:
@@ -53,7 +56,7 @@ async def oauth_login(provider: str, request: Request):
             "redirect_uri": github_redirect,
             "scope": "user:email",
         }
-        query = "&".join(f"{k}={v}" for k, v in params.items())
+        query = urllib.parse.urlencode(params)
         return {"url": f"https://github.com/login/oauth/authorize?{query}"}
     raise HTTPException(status_code=400, detail=f"Unsupported provider: {provider}")
 
@@ -61,14 +64,15 @@ async def oauth_login(provider: str, request: Request):
 @router.post("/oauth/callback")
 async def oauth_callback(
     req: OAuthCallbackRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db_session),
 ):
     provider = req.provider
     code = req.code
 
-    base_url = req.redirect_uri or _oauth_base_url()
-    google_redirect = f"{base_url.rstrip('/')}/auth/google/callback"
-    github_redirect = f"{base_url.rstrip('/')}/auth/github/callback"
+    base_url = _oauth_base_url(request)
+    google_redirect = f"{base_url}/auth/google/callback"
+    github_redirect = f"{base_url}/auth/github/callback"
 
     if provider == "google":
         if not settings.GOOGLE_CLIENT_ID:
