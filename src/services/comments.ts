@@ -25,14 +25,14 @@ export async function getSpoilerFreeComments(
 
 export async function createComment(
   titleId: string,
-  data: { content: string; parent_id?: string; is_spoiler?: boolean; video_timestamp?: number | null },
+  data: { content: string; parent_id?: string; is_spoiler?: boolean; video_timestamp?: number | null; profile_id: string },
 ): Promise<Comment> {
   const response = await api.post<Comment>(`/comments/${titleId}`, {
     text: data.content,
     parent_id: data.parent_id,
     spoiler_tag: data.is_spoiler ?? false,
     timestamp_seconds: data.video_timestamp,
-  })
+  }, { params: { profile_id: data.profile_id } })
   return response.data
 }
 

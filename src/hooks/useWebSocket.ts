@@ -9,6 +9,7 @@ interface UseWebSocketReturn {
   sendMessage: (data: unknown) => void
   messages: unknown[]
   connected: boolean
+  error: string | null
   connect: (url: string) => void
   disconnect: () => void
 }
@@ -20,6 +21,7 @@ export function useWebSocket(
   const { autoConnect = true, onMessage } = options
   const wsRef = useRef<WebSocket | null>(null)
   const [connected, setConnected] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [messages, setMessages] = useState<unknown[]>([])
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
   const reconnectAttempts = useRef(0)
@@ -35,6 +37,7 @@ export function useWebSocket(
 
       socket.onopen = () => {
         setConnected(true)
+        setError(null)
         reconnectAttempts.current = 0
       }
 
@@ -60,6 +63,7 @@ export function useWebSocket(
       }
 
       socket.onerror = () => {
+        setError('WebSocket connection failed')
         socket.close()
       }
 
@@ -77,6 +81,7 @@ export function useWebSocket(
       wsRef.current.close()
     }
     setConnected(false)
+    setError(null)
     setMessages([])
   }, [])
 
@@ -95,5 +100,5 @@ export function useWebSocket(
     }
   }, [url, autoConnect, connect, disconnect])
 
-  return { sendMessage, messages, connected, connect, disconnect }
+  return { sendMessage, messages, connected, error, connect, disconnect }
 }

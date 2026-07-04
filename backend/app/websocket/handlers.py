@@ -1,6 +1,6 @@
 import json
 import uuid
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 from app.websocket.manager import manager
 from app.repositories.chat_repo import ChatRepository
 from app.repositories.comment_repo import CommentRepository
@@ -24,7 +24,6 @@ async def chat_websocket(websocket: WebSocket, title_id: str, token: str = Query
         if not user:
             await websocket.close(code=4001)
             return
-        from app.deps.auth_deps import get_current_profile
         repo = UserRepository(db)
         profile = await repo.get_profile_by_id(uuid.UUID(profile_id))
         if not profile or str(profile.user_id) != str(user_id):
@@ -33,25 +32,33 @@ async def chat_websocket(websocket: WebSocket, title_id: str, token: str = Query
         profile_name = profile.name
         profile_avatar = profile.avatar_url
     room = f"chat:{title_id}"
-    await manager.connect(room, websocket)
+    try:
+        await manager.connect(room, websocket)
+    except Exception:
+        await websocket.close(code=4001)
+        return
     chat_repo = ChatRepository()
-    raw_history = await chat_repo.get_messages(title_id, 50)
-    history = []
-    for m in raw_history:
-        history.append({
-            "id": m.get("id", ""),
-            "user_id": m.get("profile_id", ""),
-            "username": m.get("profile_name", "Unknown"),
-            "avatar_url": m.get("avatar_url"),
-            "title_id": title_id,
-            "content": m.get("text", ""),
-            "is_system": False,
-            "created_at": m.get("created_at", ""),
+    try:
+        raw_history = await chat_repo.get_messages(title_id, 50)
+        history = []
+        for m in raw_history:
+            history.append({
+                "id": m.get("id", ""),
+                "user_id": m.get("profile_id", ""),
+                "username": m.get("profile_name", "Unknown"),
+                "avatar_url": m.get("avatar_url"),
+                "title_id": title_id,
+                "content": m.get("text", ""),
+                "is_system": False,
+                "created_at": m.get("created_at", ""),
+            })
+        await manager.send_personal(websocket, {
+            "type": "history",
+            "messages": history,
         })
-    await manager.send_personal(websocket, {
-        "type": "history",
-        "messages": history,
-    })
+    except Exception:
+        await manager.disconnect(room, websocket)
+        return
     try:
         while True:
             data = await websocket.receive_text()
@@ -92,8 +99,13 @@ async def watch_party_websocket(websocket: WebSocket, party_id: str, token: str 
         if not payload:
             await websocket.close(code=4001)
             return
+        user_id = uuid.UUID(payload["sub"])
     room = f"party:{party_id}"
-    await manager.connect(room, websocket)
+    try:
+        await manager.connect(room, websocket)
+    except Exception:
+        await websocket.close(code=4001)
+        return
     try:
         while True:
             data = await websocket.receive_text()
@@ -102,7 +114,7 @@ async def watch_party_websocket(websocket: WebSocket, party_id: str, token: str 
             if event_type in ("play", "pause", "seek"):
                 message = {
                     "type": event_type,
-                    "profile_id": payload["sub"],
+                    "profile_id": str(user_id),
                     "timestamp": msg_data.get("timestamp", 0.0),
                     "current_time": msg_data.get("current_time", 0.0),
                     "party_id": party_id,
@@ -111,7 +123,7 @@ async def watch_party_websocket(websocket: WebSocket, party_id: str, token: str 
             elif event_type == "drift_correction":
                 message = {
                     "type": "drift_correction",
-                    "profile_id": payload["sub"],
+                    "profile_id": str(user_id),
                     "current_time": msg_data.get("current_time", 0.0),
                     "party_id": party_id,
                 }

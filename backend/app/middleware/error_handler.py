@@ -6,6 +6,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 class ErrorHandlingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable):
+        if request.url.path.startswith("/ws"):
+            return await call_next(request)
         try:
             response = await call_next(request)
             return response

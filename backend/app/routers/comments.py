@@ -50,6 +50,7 @@ async def list_comments(
 async def create_comment(
     title_id: str,
     data: CommentCreate,
+    profile_id: str = Query(...),
     current_user: dict = Depends(get_current_user),
     profile: dict = Depends(get_current_profile),
 ):
@@ -65,6 +66,7 @@ async def create_comment(
 async def update_comment(
     comment_id: str,
     data: CommentUpdate,
+    profile_id: str = Query(...),
     current_user: dict = Depends(get_current_user),
     profile: dict = Depends(get_current_profile),
 ):
@@ -78,6 +80,7 @@ async def update_comment(
 @router.delete("/{comment_id}")
 async def delete_comment(
     comment_id: str,
+    profile_id: str = Query(...),
     current_user: dict = Depends(get_current_user),
     profile: dict = Depends(get_current_profile),
 ):

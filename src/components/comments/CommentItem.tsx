@@ -7,6 +7,7 @@ import { Heart, MessageCircle, Clock } from 'lucide-react'
 import { likeComment, createComment } from '@/services/comments'
 import { formatDuration } from '@/lib/utils'
 import { Input } from '@/components/ui/Input'
+import { useAuthStore } from '@/stores/authStore'
 
 interface CommentItemProps {
   comment: Comment
@@ -32,12 +33,14 @@ function formatRelativeTime(dateStr: string): string {
 }
 
 export function CommentItem({ comment, currentTime, onSeek, hasTimestamp, titleId }: CommentItemProps) {
+  const currentProfile = useAuthStore((s) => s.currentProfile)
   const [liked, setLiked] = useState(comment.is_liked)
   const [likeCount, setLikeCount] = useState(comment.likes_count)
   const [liking, setLiking] = useState(false)
   const [showReply, setShowReply] = useState(false)
   const [replyText, setReplyText] = useState('')
   const [postingReply, setPostingReply] = useState(false)
+  const [replyError, setReplyError] = useState<string | null>(null)
 
   const hasTimestampValue = hasTimestamp && comment.video_timestamp != null
   const spoilerVisible = comment.is_spoiler
@@ -68,17 +71,23 @@ export function CommentItem({ comment, currentTime, onSeek, hasTimestamp, titleI
   async function handleReply(e: FormEvent) {
     e.preventDefault()
     if (!replyText.trim() || postingReply) return
+    setReplyError(null)
+    if (!currentProfile) {
+      setReplyError('No profile selected')
+      return
+    }
     setPostingReply(true)
     try {
       const newReply = await createComment(titleId, {
         content: replyText.trim(),
         parent_id: comment.id,
+        profile_id: currentProfile.id,
       })
       comment.replies = [...(comment.replies || []), newReply]
       setReplyText('')
       setShowReply(false)
-    } catch {
-      // silently fail
+    } catch (err) {
+      setReplyError(err instanceof Error ? err.message : 'Failed to post reply')
     } finally {
       setPostingReply(false)
     }
@@ -151,6 +160,9 @@ export function CommentItem({ comment, currentTime, onSeek, hasTimestamp, titleI
           </button>
         </div>
 
+        {replyError && (
+          <p className="text-[10px] text-magenta font-heading ml-4 mt-1">{replyError}</p>
+        )}
         {showReply && (
           <form onSubmit={handleReply} className="flex gap-2 mt-2">
             <Input

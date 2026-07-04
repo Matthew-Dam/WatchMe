@@ -33,7 +33,7 @@ export function ChatPanel({ titleId }: ChatPanelProps) {
     ? `${WS_BASE}/ws/chat/${titleId}${query ? `?${query}` : ''}`
     : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/chat/${titleId}${query ? `?${query}` : ''}`
 
-  const { sendMessage, connected } = useWebSocket(wsUrl, {
+  const { sendMessage, connected, error } = useWebSocket(wsUrl, {
     onMessage: (data: unknown) => {
       const msg = data as { type?: string; id?: string; user_id?: string; username?: string; avatar_url?: string | null; content?: string; is_system?: boolean; created_at?: string }
       if (msg.type === 'message' || msg.type === 'system') {
@@ -106,6 +106,7 @@ export function ChatPanel({ titleId }: ChatPanelProps) {
           <div className="flex flex-col items-center justify-center h-full text-center px-6">
             <div className="w-8 h-8 border-2 border-cyan/30 border-t-cyan rounded-full animate-spin mb-3" />
             <p className="text-sm text-gray-400 font-heading">Connecting to chat...</p>
+            {error && <p className="text-xs text-magenta mt-2">{error}</p>}
           </div>
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-6">

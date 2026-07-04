@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/Skeleton'
 import { getComments, createComment } from '@/services/comments'
 import { cn } from '@/lib/utils'
 import { MessageSquare, Clock, Timer, AlertTriangle } from 'lucide-react'
+import { useAuthStore } from '@/stores/authStore'
 
 interface CommentPanelProps {
   titleId: string
@@ -17,6 +18,7 @@ interface CommentPanelProps {
 type SortMode = 'timestamp' | 'likes'
 
 export function CommentPanel({ titleId, currentTime, onSeek }: CommentPanelProps) {
+  const currentProfile = useAuthStore((s) => s.currentProfile)
   const [comments, setComments] = useState<Comment[]>([])
   const [loading, setLoading] = useState(true)
   const [text, setText] = useState('')
@@ -24,6 +26,7 @@ export function CommentPanel({ titleId, currentTime, onSeek }: CommentPanelProps
   const [posting, setPosting] = useState(false)
   const [sort, setSort] = useState<SortMode>('timestamp')
   const [includeTimestamp, setIncludeTimestamp] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     async function fetchComments() {
@@ -44,19 +47,25 @@ export function CommentPanel({ titleId, currentTime, onSeek }: CommentPanelProps
     e.preventDefault()
     if (!text.trim() || posting) return
 
+    setError(null)
+    if (!currentProfile) {
+      setError('No profile selected')
+      return
+    }
     setPosting(true)
     try {
       const newComment = await createComment(titleId, {
         content: text.trim(),
         is_spoiler: isSpoiler,
         video_timestamp: includeTimestamp ? currentTime : null,
+        profile_id: currentProfile.id,
       })
       setComments((prev) => [newComment, ...prev])
       setText('')
       setIsSpoiler(false)
       setIncludeTimestamp(false)
-    } catch {
-      // silently fail
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to post comment')
     } finally {
       setPosting(false)
     }
@@ -146,6 +155,11 @@ export function CommentPanel({ titleId, currentTime, onSeek }: CommentPanelProps
         )}
       </div>
 
+      {error && (
+        <div className="px-3 pt-2">
+          <p className="text-[11px] text-magenta font-heading">{error}</p>
+        </div>
+      )}
       {/* Comment input */}
       <form onSubmit={handleSubmit} className="border-t border-border p-3 space-y-2">
         <div className="flex items-center gap-2">
