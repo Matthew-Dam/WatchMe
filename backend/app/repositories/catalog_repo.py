@@ -3,13 +3,22 @@ from app.database.supabase import supabase
 
 
 class CatalogRepository:
+    SCHEMA_COLUMNS = {
+        "title", "description", "year", "duration", "content_type",
+        "genres", "countries", "categories", "mood_tags",
+        "cast_list", "crew",
+        "poster_url", "backdrop_url", "trailer_url", "hls_url",
+        "average_rating", "total_ratings", "is_published",
+    }
+
     async def create_title(self, data: dict) -> str:
-        insert_data = {k: v for k, v in data.items() if k not in ("tmdb_id",)}
+        insert_data = {k: v for k, v in data.items() if k in self.SCHEMA_COLUMNS}
         result = await supabase.insert("titles", insert_data, use_service_role=True)
         return result["id"]
 
     async def update_title(self, title_id: str, data: dict) -> bool:
-        return await supabase.update("titles", title_id, data, use_service_role=True)
+        safe_data = {k: v for k, v in data.items() if k in self.SCHEMA_COLUMNS}
+        return await supabase.update("titles", title_id, safe_data, use_service_role=True)
 
     async def get_title_by_id(self, title_id: str) -> Optional[dict]:
         return await supabase.select_one("titles", title_id)
