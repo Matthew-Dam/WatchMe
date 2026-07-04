@@ -51,9 +51,11 @@ export async function deleteComment(commentId: string): Promise<void> {
   await api.delete(`/comments/${commentId}`)
 }
 
-export async function likeComment(commentId: string): Promise<{ liked: boolean; likes_count: number }> {
+export async function likeComment(commentId: string, profileId: string): Promise<{ liked: boolean; likes_count: number }> {
   const response = await api.post<{ liked: boolean; likes_count: number }>(
     `/comments/${commentId}/like`,
+    {},
+    { params: { profile_id: profileId } },
   )
   return response.data
 }

@@ -44,11 +44,8 @@ class CommentService:
         items, total = await self.repo.list_by_title(title_id, page, page_size, max_timestamp, parent_id)
         return {"items": items, "total": total, "page": page, "page_size": page_size}
 
-    async def toggle_like(self, comment_id: str) -> int:
-        comment = await self.repo.get_by_id(comment_id)
-        if not comment:
-            return 0
-        return await self.repo.toggle_like(comment_id, True)
+    async def toggle_like(self, comment_id: str, profile_id: str) -> dict:
+        return await self.repo.toggle_like(comment_id, profile_id)
 
     async def get_spoiler_free_comments(self, title_id: str, current_position: float, page: int, page_size: int) -> dict:
         return await self.get_comments(title_id, page, page_size, max_timestamp=current_position)

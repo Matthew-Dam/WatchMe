@@ -1,9 +1,9 @@
 import uuid
 from typing import Optional
 from datetime import datetime, timezone
-from sqlalchemy import select, func, and_, or_, text
+from sqlalchemy import select, func, and_, or_, text, delete
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.postgres_models import Comment
+from app.models.postgres_models import Comment, CommentLike
 from app.database.postgres import async_session_factory
 
 
@@ -76,19 +76,31 @@ class CommentRepository:
             items = [self._to_dict(c) for c in result.scalars().all()]
             return items, total
 
-    async def toggle_like(self, comment_id: str, increment: bool = True) -> int:
+    async def toggle_like(self, comment_id: str, profile_id: str) -> dict:
+        cid = uuid.UUID(comment_id)
+        pid = uuid.UUID(profile_id)
         async with async_session_factory() as db:
-            stmt = select(Comment).where(Comment.id == uuid.UUID(comment_id))
-            result = await db.execute(stmt)
-            comment = result.scalar_one_or_none()
+            comment = await db.execute(select(Comment).where(Comment.id == cid))
+            comment = comment.scalar_one_or_none()
             if not comment:
-                return 0
-            if increment:
-                comment.likes += 1
-            else:
+                return {"liked": False, "likes_count": 0}
+
+            existing = await db.execute(
+                select(CommentLike).where(and_(CommentLike.comment_id == cid, CommentLike.profile_id == pid))
+            )
+            existing = existing.scalar_one_or_none()
+
+            if existing:
+                await db.delete(existing)
                 comment.likes -= 1
+                liked = False
+            else:
+                db.add(CommentLike(id=uuid.uuid4(), comment_id=cid, profile_id=pid))
+                comment.likes += 1
+                liked = True
+
             await db.commit()
-            return comment.likes
+            return {"liked": liked, "likes_count": comment.likes}
 
     async def get_replies(self, comment_id: str, page: int = 1, page_size: int = 20) -> tuple[list[dict], int]:
         async with async_session_factory() as db:

@@ -132,6 +132,16 @@ class Comment(Base):
     edited_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
 
 
+class CommentLike(Base):
+    __tablename__ = "comment_likes"
+    __table_args__ = (UniqueConstraint("comment_id", "profile_id", name="uq_comment_profile_like"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    comment_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    profile_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class Subscription(Base):
     __tablename__ = "subscriptions"
 

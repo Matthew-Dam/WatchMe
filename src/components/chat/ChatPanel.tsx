@@ -28,7 +28,7 @@ export function ChatPanel({ titleId }: ChatPanelProps) {
   if (tokens?.access_token) params.set('token', tokens.access_token)
   if (currentProfile?.id) params.set('profile_id', currentProfile.id)
   const query = params.toString()
-  const WS_BASE = import.meta.env.VITE_WS_URL || ''
+  const WS_BASE = (import.meta.env.VITE_WS_URL || '').replace(/\/+$/, '').replace(/\/ws$/, '')
   const wsUrl = WS_BASE
     ? `${WS_BASE}/ws/chat/${titleId}${query ? `?${query}` : ''}`
     : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/chat/${titleId}${query ? `?${query}` : ''}`

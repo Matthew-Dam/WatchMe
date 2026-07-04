@@ -92,12 +92,14 @@ async def delete_comment(
 
 
 @router.post("/{comment_id}/like")
-async def like_comment(comment_id: str):
+async def like_comment(
+    comment_id: str,
+    profile_id: str = Query(...),
+    current_user: dict = Depends(get_current_user),
+    profile: dict = Depends(get_current_profile),
+):
     service = get_comment_service()
-    result = await service.toggle_like(comment_id)
-    if not result:
-        raise HTTPException(status_code=404, detail="Comment not found")
-    return {"liked": True, "likes_count": result}
+    return await service.toggle_like(comment_id, profile["id"])
 
 
 @router.get("/{title_id}/spoiler-free", response_model=CommentList)

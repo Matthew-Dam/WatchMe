@@ -48,10 +48,10 @@ export function CommentItem({ comment, currentTime, onSeek, hasTimestamp, titleI
     : true
 
   async function handleLike() {
-    if (liking) return
+    if (liking || !currentProfile) return
     setLiking(true)
     try {
-      const result = await likeComment(comment.id)
+      const result = await likeComment(comment.id, currentProfile.id)
       setLiked(result.liked)
       setLikeCount(result.likes_count)
     } catch {
