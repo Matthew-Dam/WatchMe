@@ -5,7 +5,7 @@ from datetime import datetime
 
 class CommentCreate(BaseModel):
     text: str = Field(..., min_length=1, max_length=2000)
-    timestamp_seconds: float = 0.0
+    timestamp_seconds: Optional[float] = 0.0
     parent_id: Optional[str] = None
     spoiler_tag: bool = False
 
