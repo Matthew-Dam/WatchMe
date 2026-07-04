@@ -47,6 +47,7 @@ export interface Title {
   user_rating: number | null
   in_watchlist: boolean
   watch_progress: number | null
+  trailer_url: string | null
   created_at: string
   updated_at: string
 }

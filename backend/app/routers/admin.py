@@ -95,14 +95,40 @@ async def tmdb_import(
             data = await tmdb.get_movie_details(tmdb_id)
         if not data:
             raise HTTPException(status_code=404, detail="Title not found on TMDB")
+        trailer_url = await tmdb.get_videos(tmdb_id, media_type)
+        if trailer_url:
+            data["trailer_url"] = trailer_url
         repo = CatalogRepository()
         title_id = await repo.create_title(data)
         await user_repo.log_import(user_id, data.get("title", data.get("name", "")), tmdb_id, media_type, title_id)
-        return {"id": title_id, "title": data.get("title", data.get("name", ""))}
+        return {"id": title_id, "title": data.get("title", data.get("name", "")), "trailer_url": trailer_url}
     except HTTPException:
         raise
     except Exception as e:
         await user_repo.log_import(user_id, f"TMDB #{tmdb_id}", tmdb_id, media_type, None, "failed", str(e))
         raise HTTPException(status_code=500, detail=f"Import failed: {e}")
+    finally:
+        await tmdb.close()
+
+
+@router.post("/tmdb/fetch-trailer")
+async def fetch_trailer(
+    tmdb_id: int,
+    media_type: str = Query("movie"),
+    admin: dict = Depends(require_admin),
+    db: AsyncSession = Depends(get_db_session),
+):
+    tmdb = TMDBService()
+    try:
+        trailer_url = await tmdb.get_videos(tmdb_id, media_type)
+        if not trailer_url:
+            return {"trailer_url": None, "found": False}
+        repo = CatalogRepository()
+        user_repo = UserRepository(db)
+        found_title = await user_repo.check_imported(tmdb_id)
+        if found_title:
+            await repo.update_title(found_title.title_id, {"trailer_url": trailer_url})
+            return {"trailer_url": trailer_url, "found": True, "title_id": found_title.title_id}
+        return {"trailer_url": trailer_url, "found": False, "note": "No matching imported title found"}
     finally:
         await tmdb.close()

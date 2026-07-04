@@ -63,6 +63,20 @@ class TMDBService:
         data = resp.json()
         return [self._transform_tv(r) for r in data.get("results", [])]
 
+    async def get_videos(self, tmdb_id: int, media_type: str = "movie") -> Optional[str]:
+        await self._ensure_client()
+        endpoint = f"/{media_type}/{tmdb_id}/videos"
+        try:
+            resp = await self.client.get(endpoint)
+            resp.raise_for_status()
+            data = resp.json()
+            for video in data.get("results", []):
+                if video.get("site") == "YouTube" and video.get("type") in ("Trailer", "Teaser"):
+                    return f"https://www.youtube.com/watch?v={video['key']}"
+        except Exception:
+            pass
+        return None
+
     async def get_genres(self, media_type: str = "movie") -> list[dict]:
         await self._ensure_client()
         endpoint = f"/genre/{media_type}/list"
