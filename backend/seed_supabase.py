@@ -48,6 +48,10 @@ SAMPLE_MOODS = [
     {"name": "Action-Packed", "slug": "action-packed", "description": "Non-stop excitement", "emoji": "💥"},
     {"name": "Slow-Burn", "slug": "slow-burn", "description": "Gradual, patient storytelling", "emoji": "🔥"},
     {"name": "Hopeful", "slug": "hopeful", "description": "Optimistic and inspiring", "emoji": "🌟"},
+    {"name": "Feel Good", "slug": "feel-good", "description": "Uplifting and positive content", "emoji": "😊"},
+    {"name": "Chill & Relax", "slug": "chill-relax", "description": "Easy-going and calming", "emoji": "🧘"},
+    {"name": "Mind-Bending", "slug": "mind-bending", "description": "Complex and thought-provoking", "emoji": "🤯"},
+    {"name": "Late Night", "slug": "late-night", "description": "Best watched late at night", "emoji": "🌙"},
 ]
 
 SAMPLE_TITLES = [

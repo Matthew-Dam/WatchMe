@@ -44,6 +44,10 @@ export default function WatchPage() {
   }
 
   function getStreamUrl(): string {
+    const hlsDefault = title?.hls_url?.default
+    if (hlsDefault?.endsWith('.mp4')) {
+      return `/api/stream/${id}/video`
+    }
     return `/api/stream/${id}/master.m3u8`
   }
 

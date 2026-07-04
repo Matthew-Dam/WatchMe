@@ -162,6 +162,14 @@ class UserRepository:
         await self.db.flush()
         return entry
 
+    async def get_all_successful_imports(self) -> list[ImportLog]:
+        result = await self.db.execute(
+            select(ImportLog)
+            .where(ImportLog.status == "success")
+            .order_by(ImportLog.imported_at.desc())
+        )
+        return list(result.scalars().all())
+
     async def get_import_history(self, user_id: str, limit: int = 50) -> list[ImportLog]:
         result = await self.db.execute(
             select(ImportLog)

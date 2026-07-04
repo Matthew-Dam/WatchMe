@@ -56,13 +56,29 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(funct
     getCurrentTime: () => videoRef.current?.currentTime ?? 0,
   }), [setCurrentTime])
 
-  // Initialize HLS
+  // Initialize playback (HLS or MP4)
   useEffect(() => {
     const video = videoRef.current
     if (!video) return
 
     setLoading(true)
     setError(null)
+
+    const isMp4 = src.endsWith('.mp4') || src.includes('/video')
+
+    if (isMp4) {
+      video.src = src
+      const onLoad = () => setLoading(false)
+      const onErr = () => { setError('Failed to load video.'); setLoading(false) }
+      video.addEventListener('loadedmetadata', onLoad)
+      video.addEventListener('error', onErr)
+      return () => {
+        video.removeEventListener('loadedmetadata', onLoad)
+        video.removeEventListener('error', onErr)
+        video.src = ''
+        reset()
+      }
+    }
 
     if (Hls.isSupported()) {
       const hls = new Hls({
@@ -82,8 +98,13 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(funct
 
       hls.on(Hls.Events.ERROR, (_event, data) => {
         if (data.fatal) {
-          setError('Failed to load video. Please try again.')
-          setLoading(false)
+          hls.destroy()
+          video.src = src
+          video.addEventListener('loadedmetadata', () => setLoading(false))
+          video.addEventListener('error', () => {
+            setError('Failed to load video. Please try again.')
+            setLoading(false)
+          })
         }
       })
 
@@ -103,8 +124,16 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(funct
         reset()
       }
     } else {
-      setError('HLS is not supported in this browser.')
-      setLoading(false)
+      video.src = src
+      const onLoad = () => setLoading(false)
+      const onErr = () => { setError('Failed to load video.'); setLoading(false) }
+      video.addEventListener('loadedmetadata', onLoad)
+      video.addEventListener('error', onErr)
+      return () => {
+        video.removeEventListener('loadedmetadata', onLoad)
+        video.removeEventListener('error', onErr)
+        reset()
+      }
     }
   }, [src, reset])
 

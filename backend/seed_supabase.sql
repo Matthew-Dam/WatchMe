@@ -38,14 +38,18 @@ on conflict (name) do nothing;
 
 -- ===== MOOD TAGS =====
 insert into mood_tags (name, slug, emoji, description) values
+  ('Action-Packed', 'action-packed', '💥', 'Non-stop excitement and high energy'),
+  ('Suspenseful', 'suspenseful', '😰', 'Edge-of-your-seat tension'),
+  ('Heartwarming', 'heartwarming', '❤️', 'Warm and uplifting feelings'),
+  ('Dark', 'dark', '🌑', 'Somber and serious tone'),
+  ('Funny', 'funny', '😂', 'Light-hearted and humorous'),
+  ('Thought-Provoking', 'thought-provoking', '🤔', 'Makes you think deeply'),
+  ('Slow-Burn', 'slow-burn', '🔥', 'Gradual, patient storytelling'),
+  ('Hopeful', 'hopeful', '🌟', 'Optimistic and inspiring'),
   ('Feel Good', 'feel-good', '😊', 'Uplifting and positive content'),
-  ('Dark & Gritty', 'dark-gritty', '😈', 'Intense and serious themes'),
   ('Chill & Relax', 'chill-relax', '🧘', 'Easy-going and calming'),
   ('Mind-Bending', 'mind-bending', '🤯', 'Complex and thought-provoking'),
-  ('Heartwarming', 'heartwarming', '❤️', 'Emotionally touching stories'),
-  ('Edge of Seat', 'edge-of-seat', '😬', 'Tense and gripping'),
-  ('Late Night', 'late-night', '🌙', 'Best watched at night'),
-  ('Binge Worthy', 'binge-worthy', '📺', 'Hard to stop watching')
+  ('Late Night', 'late-night', '🌙', 'Best watched late at night')
 on conflict (name) do nothing;
 
 -- ===== TITLES =====

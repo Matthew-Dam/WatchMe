@@ -257,7 +257,7 @@ export default function WatchPartyPage() {
         <div className="w-full bg-black">
           <VideoPlayer
             ref={playerRef}
-            src={`/api/stream/${titleData.id}/master.m3u8`}
+            src={titleData.hls_url?.default?.endsWith('.mp4') ? `/api/stream/${titleData.id}/video` : `/api/stream/${titleData.id}/master.m3u8`}
             poster={titleData.backdrop_path ? `/api/image${titleData.backdrop_path}` : undefined}
             titleId={titleData.id}
           />

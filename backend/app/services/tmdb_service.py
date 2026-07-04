@@ -84,6 +84,76 @@ class TMDBService:
         resp.raise_for_status()
         return resp.json().get("genres", [])
 
+    async def get_trending(self, media_type: str = "movie", time_window: str = "week", page: int = 1) -> list[dict]:
+        await self._ensure_client()
+        resp = await self.client.get(f"/trending/{media_type}/{time_window}", params={"page": page})
+        resp.raise_for_status()
+        data = resp.json()
+        transformer = self._transform_movie if media_type == "movie" else self._transform_tv
+        return [transformer(r) for r in data.get("results", [])]
+
+    async def get_now_playing(self, page: int = 1) -> list[dict]:
+        await self._ensure_client()
+        resp = await self.client.get("/movie/now_playing", params={"page": page})
+        resp.raise_for_status()
+        data = resp.json()
+        return [self._transform_movie(r) for r in data.get("results", [])]
+
+    async def get_top_rated(self, media_type: str = "movie", page: int = 1) -> list[dict]:
+        await self._ensure_client()
+        endpoint = f"/{media_type}/top_rated"
+        resp = await self.client.get(endpoint, params={"page": page})
+        resp.raise_for_status()
+        data = resp.json()
+        transformer = self._transform_movie if media_type == "movie" else self._transform_tv
+        return [transformer(r) for r in data.get("results", [])]
+
+    async def get_upcoming(self, page: int = 1) -> list[dict]:
+        await self._ensure_client()
+        resp = await self.client.get("/movie/upcoming", params={"page": page})
+        resp.raise_for_status()
+        data = resp.json()
+        return [self._transform_movie(r) for r in data.get("results", [])]
+
+    async def discover_by_genre(self, genre_ids: list[int], media_type: str = "movie", page: int = 1) -> list[dict]:
+        await self._ensure_client()
+        params = {
+            "with_genres": ",".join(str(g) for g in genre_ids),
+            "sort_by": "popularity.desc",
+            "page": page,
+        }
+        if media_type == "tv":
+            params["watch_region"] = "US"
+        endpoint = f"/discover/{media_type}"
+        resp = await self.client.get(endpoint, params=params)
+        resp.raise_for_status()
+        data = resp.json()
+        transformer = self._transform_movie if media_type == "movie" else self._transform_tv
+        return [transformer(r) for r in data.get("results", [])]
+
+    async def get_animation_movies(self, page: int = 1) -> list[dict]:
+        return await self.discover_by_genre([16], "movie", page)
+
+    async def get_by_year(self, year: int, media_type: str = "movie", page: int = 1) -> list[dict]:
+        await self._ensure_client()
+        endpoint = f"/discover/{media_type}"
+        params = {"primary_release_year": year, "sort_by": "vote_average.desc", "vote_count.gte": 50, "page": page}
+        if media_type == "tv":
+            params = {"first_air_date_year": year, "sort_by": "vote_average.desc", "vote_count.gte": 20, "page": page}
+        resp = await self.client.get(endpoint, params=params)
+        resp.raise_for_status()
+        data = resp.json()
+        transformer = self._transform_movie if media_type == "movie" else self._transform_tv
+        return [transformer(r) for r in data.get("results", [])]
+
+    async def get_genre_id_map(self) -> dict[str, int]:
+        movie_genres = await self.get_genres("movie")
+        tv_genres = await self.get_genres("tv")
+        combined = {}
+        for g in movie_genres + tv_genres:
+            combined[g["name"]] = g["id"]
+        return combined
+
     def _transform_movie(self, data: dict) -> dict:
         return {
             "tmdb_id": data.get("id"),
@@ -98,6 +168,8 @@ class TMDBService:
             "poster_url": f"{TMDB_IMAGE_BASE}/w500{data['poster_path']}" if data.get("poster_path") else None,
             "backdrop_url": f"{TMDB_IMAGE_BASE}/original{data['backdrop_path']}" if data.get("backdrop_path") else None,
             "genres": [g["name"] for g in data.get("genres", [])],
+            "vote_average": data.get("vote_average", 0) or 0,
+            "popularity": data.get("popularity", 0) or 0,
             "cast_list": [],
             "crew": {},
             "content_type": "movie",
@@ -118,6 +190,8 @@ class TMDBService:
             "poster_url": f"{TMDB_IMAGE_BASE}/w500{data['poster_path']}" if data.get("poster_path") else None,
             "backdrop_url": f"{TMDB_IMAGE_BASE}/original{data['backdrop_path']}" if data.get("backdrop_path") else None,
             "genres": [g["name"] for g in data.get("genres", [])],
+            "vote_average": data.get("vote_average", 0) or 0,
+            "popularity": data.get("popularity", 0) or 0,
             "cast_list": [],
             "crew": {},
             "content_type": "tv",

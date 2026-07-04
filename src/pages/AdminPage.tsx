@@ -7,7 +7,14 @@ import { Input } from '@/components/ui/Input'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import api from '@/services/api'
 import * as catalog from '@/services/catalog'
-import { searchTMDB, getPopularTMDB, importFromTMDB, getImportHistory, type TMDBResult, type ImportLogEntry } from '@/services/admin'
+import {
+  searchTMDB, getPopularTMDB, importFromTMDB, getImportHistory,
+  bulkImportTMDB, bulkImportIATop, bulkImportIACollection,
+  searchIA, getTMDBByGenre,
+  getIACollections, backfillTrailers, backfillMoods,
+  type TMDBResult, type ImportLogEntry, type BulkImportResponse,
+  type IACollection,
+} from '@/services/admin'
 import type { Genre, Country, Category, MoodTag } from '@/types'
 
 interface AddMovieForm {
@@ -518,11 +525,260 @@ function TMDBImportTab() {
   )
 }
 
-type Tab = 'add-movie' | 'manage-titles' | 'import-history' | 'tmdb-import'
+function IAImportTab() {
+  const [collections, setCollections] = useState<IACollection[]>([])
+  const [loading, setLoading] = useState(true)
+  const [importing, setImporting] = useState<string | null>(null)
+  const [iaQuery, setIaQuery] = useState('')
+  const [iaResults, setIaResults] = useState<any[]>([])
+  const [iaSearching, setIaSearching] = useState(false)
+
+  useEffect(() => {
+    getIACollections()
+      .then((res) => setCollections(res.collections))
+      .catch(() => toast.error('Failed to load IA collections'))
+      .finally(() => setLoading(false))
+  }, [])
+
+  async function handleSearchIA() {
+    if (!iaQuery.trim()) return
+    setIaSearching(true)
+    try {
+      const data = await searchIA(iaQuery)
+      setIaResults(data.items)
+    } catch {
+      toast.error('IA search failed')
+    } finally {
+      setIaSearching(false)
+    }
+  }
+
+  async function handleImportCollection(slug: string) {
+    setImporting(slug)
+    try {
+      const res: BulkImportResponse = await bulkImportIACollection(slug)
+      toast.success(`Imported ${res.imported} titles, ${res.skipped} skipped, ${res.failed} failed`)
+    } catch {
+      toast.error('Bulk import failed')
+    } finally {
+      setImporting(null)
+    }
+  }
+
+  async function handleImportTopIA() {
+    setImporting('top-ia')
+    try {
+      const res: BulkImportResponse = await bulkImportIATop(20)
+      toast.success(`Imported ${res.imported} titles, ${res.skipped} skipped, ${res.failed} failed`)
+    } catch {
+      toast.error('Bulk import failed')
+    } finally {
+      setImporting(null)
+    }
+  }
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h3 className="text-sm font-heading font-semibold text-white mb-3">IA Search</h3>
+        <div className="flex gap-2 mb-4">
+          <Input
+            placeholder="Search Internet Archive..."
+            value={iaQuery}
+            onChange={(e) => setIaQuery(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearchIA()}
+            className="text-sm flex-1"
+          />
+          <Button variant="primary" size="sm" onClick={handleSearchIA} disabled={iaSearching}>
+            {iaSearching ? 'Searching...' : 'Search'}
+          </Button>
+        </div>
+        {iaResults.length > 0 && (
+          <div className="grid grid-cols-1 gap-3 max-h-96 overflow-y-auto">
+            {iaResults.map((item, i) => (
+              <div key={i} className="flex items-center gap-3 bg-surface/20 border border-border/40 rounded-lg p-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-white truncate font-medium">{item.title}</p>
+                  <p className="text-xs text-gray-400 truncate">{item.description?.slice(0, 100)}</p>
+                  <p className="text-[10px] text-gray-500 mt-1">{item.year} &middot; {item.identifier}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div>
+        <h3 className="text-sm font-heading font-semibold text-white mb-3">Curated Collections</h3>
+        {loading ? (
+          <LoadingSpinner size="sm" />
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {collections.map((col) => (
+              <div key={col.slug} className="flex items-center justify-between bg-surface/20 border border-border/40 rounded-lg p-4">
+                <div>
+                  <p className="text-sm font-medium text-white">{col.name}</p>
+                  <p className="text-xs text-gray-400">{col.count} titles</p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleImportCollection(col.slug)}
+                  isLoading={importing === col.slug}
+                >
+                  Import All
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div>
+        <h3 className="text-sm font-heading font-semibold text-white mb-3">Top Internet Archive Films</h3>
+        <Button variant="primary" size="sm" onClick={handleImportTopIA} isLoading={importing === 'top-ia'}>
+          Import Top 20 Most Downloaded
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function BulkImportTab() {
+  const [importing, setImporting] = useState<string | null>(null)
+
+  const sources = [
+    { key: 'trending', label: 'Trending Now', desc: 'This week\'s hottest movies' },
+    { key: 'popular', label: 'Popular', desc: 'Most popular movies on TMDB' },
+    { key: 'top_rated', label: 'Top Rated', desc: 'Highest rated movies of all time' },
+    { key: 'now_playing', label: 'Now Playing', desc: 'Currently in theaters' },
+    { key: 'animation', label: 'Animation', desc: 'Best animated movies' },
+  ]
+
+  const genresSource = [
+    'Action', 'Comedy', 'Drama', 'Horror', 'Romance',
+    'Science Fiction', 'Thriller', 'Documentary', 'Fantasy',
+  ]
+
+  async function handleBulkImport(source: string) {
+    setImporting(source)
+    try {
+      const res: BulkImportResponse = await bulkImportTMDB(source, 'movie', 30)
+      toast.success(`Imported ${res.imported} titles, ${res.skipped} skipped, ${res.failed} failed`)
+    } catch {
+      toast.error('Bulk import failed')
+    } finally {
+      setImporting(null)
+    }
+  }
+
+  async function handleGenreImport(genre: string) {
+    setImporting(`genre-${genre}`)
+    try {
+      const preview = await getTMDBByGenre(genre)
+      const ids = preview.items.slice(0, 20).map((r) => r.tmdb_id).filter(Boolean) as number[]
+      let imported = 0; let failed = 0
+      for (const id of ids) {
+        try {
+          await importFromTMDB(id)
+          imported++
+        } catch { failed++ }
+      }
+      toast.success(`Imported ${imported} ${genre} titles, ${failed} failed`)
+    } catch {
+      toast.error('Genre import failed')
+    } finally {
+      setImporting(null)
+    }
+  }
+
+  async function handleBackfillTrailers() {
+    setImporting('trailers')
+    try {
+      const res = await backfillTrailers()
+      toast.success(`Updated ${res.updated} trailers, ${res.failed} failed`)
+    } catch {
+      toast.error('Backfill failed')
+    } finally {
+      setImporting(null)
+    }
+  }
+
+  async function handleBackfillMoods() {
+    setImporting('moods')
+    try {
+      const res = await backfillMoods()
+      toast.success(`Updated ${res.updated} titles with AI moods/categories`)
+    } catch {
+      toast.error('Backfill failed')
+    } finally {
+      setImporting(null)
+    }
+  }
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h3 className="text-sm font-heading font-semibold text-white mb-3">Bulk Import from TMDB</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {sources.map((src) => (
+            <div key={src.key} className="flex flex-col justify-between bg-surface/20 border border-border/40 rounded-lg p-4">
+              <div className="mb-3">
+                <p className="text-sm font-medium text-white">{src.label}</p>
+                <p className="text-xs text-gray-400 mt-1">{src.desc}</p>
+              </div>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => handleBulkImport(src.key)}
+                isLoading={importing === src.key}
+              >
+                Import 30 Titles
+              </Button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <h3 className="text-sm font-heading font-semibold text-white mb-3">Import by Genre</h3>
+        <div className="flex flex-wrap gap-2">
+          {genresSource.map((genre) => (
+            <Button
+              key={genre}
+              variant="outline"
+              size="sm"
+              onClick={() => handleGenreImport(genre)}
+              isLoading={importing === `genre-${genre}`}
+            >
+              {genre}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      <div className="border-t border-border/30 pt-6">
+        <h3 className="text-sm font-heading font-semibold text-white mb-3">Maintenance</h3>
+        <div className="flex flex-wrap gap-3">
+          <Button variant="outline" size="sm" onClick={handleBackfillTrailers} isLoading={importing === 'trailers'}>
+            Backfill Missing Trailers
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleBackfillMoods} isLoading={importing === 'moods'}>
+            Backfill AI Moods & Categories
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+type Tab = 'add-movie' | 'manage-titles' | 'import-history' | 'tmdb-import' | 'ia-import' | 'bulk-import'
 
 const tabs: { key: Tab; label: string }[] = [
   { key: 'add-movie', label: 'Add Movie' },
   { key: 'tmdb-import', label: 'TMDB Import' },
+  { key: 'bulk-import', label: 'Bulk Import' },
+  { key: 'ia-import', label: 'Internet Archive' },
   { key: 'manage-titles', label: 'Manage Titles' },
   { key: 'import-history', label: 'Import History' },
 ]
@@ -556,6 +812,8 @@ export default function AdminPage() {
           <div className="bg-surface/50 border border-border/50 rounded-xl p-6">
             {activeTab === 'add-movie' && <AddMovieTab />}
             {activeTab === 'tmdb-import' && <TMDBImportTab />}
+            {activeTab === 'bulk-import' && <BulkImportTab />}
+            {activeTab === 'ia-import' && <IAImportTab />}
             {activeTab === 'manage-titles' && <ManageTitlesTab />}
             {activeTab === 'import-history' && <ImportHistoryTab />}
           </div>

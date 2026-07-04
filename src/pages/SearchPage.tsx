@@ -797,6 +797,8 @@ export function SearchPage() {
                       updated_at: '',
                       tmdb_id: null,
                       logo_path: null,
+                      trailer_url: null,
+                      hls_url: null,
                     } as Title}
                     size="sm"
                   />
