@@ -16,6 +16,7 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 class OAuthCallbackRequest(BaseModel):
     code: str
     provider: str
+    redirect_uri: Optional[str] = None
 
 
 def _oauth_base_url(request: Optional[Request] = None) -> str:
@@ -32,10 +33,10 @@ def _oauth_base_url(request: Optional[Request] = None) -> str:
 
 
 @router.get("/oauth/{provider}/login")
-async def oauth_login(provider: str, request: Request):
-    base_url = _oauth_base_url(request)
-    google_redirect = f"{base_url}/auth/google/callback"
-    github_redirect = f"{base_url}/auth/github/callback"
+async def oauth_login(provider: str, request: Request, redirect_uri: Optional[str] = None):
+    base_url = redirect_uri or _oauth_base_url(request)
+    google_redirect = f"{base_url.rstrip('/')}/auth/google/callback"
+    github_redirect = f"{base_url.rstrip('/')}/auth/github/callback"
     if provider == "google":
         if not settings.GOOGLE_CLIENT_ID:
             raise HTTPException(status_code=501, detail="Google OAuth not configured")
@@ -70,9 +71,9 @@ async def oauth_callback(
     provider = req.provider
     code = req.code
 
-    base_url = _oauth_base_url(request)
-    google_redirect = f"{base_url}/auth/google/callback"
-    github_redirect = f"{base_url}/auth/github/callback"
+    base_url = req.redirect_uri or _oauth_base_url(request)
+    google_redirect = f"{base_url.rstrip('/')}/auth/google/callback"
+    github_redirect = f"{base_url.rstrip('/')}/auth/github/callback"
 
     if provider == "google":
         if not settings.GOOGLE_CLIENT_ID:

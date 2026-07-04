@@ -139,7 +139,8 @@ export function LoginPage() {
                 className="w-full"
                 onClick={async () => {
                   try {
-                    const res = await fetch('/api/auth/oauth/google/login')
+                    const redirectUri = window.location.origin
+                    const res = await fetch(`/api/auth/oauth/google/login?redirect_uri=${encodeURIComponent(redirectUri)}`)
                     if (!res.ok) throw new Error('Google OAuth not configured')
                     const data = await res.json()
                     window.location.href = data.url
