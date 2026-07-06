@@ -16,7 +16,7 @@ export function YouTubePlayer({ videoId, poster }: YouTubePlayerProps) {
     if (!container) return
 
     const iframe = document.createElement('iframe')
-    iframe.src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&controls=1`
+    iframe.src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&controls=1&vq=hd720`
     iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture'
     iframe.allowFullscreen = true
     iframe.className = 'absolute inset-0 w-full h-full'
