@@ -45,14 +45,14 @@ export default function WatchPage() {
   }
 
   function getYouTubeVideoId(): string | null {
-    const ytUrl = title?.hls_url?.youtube
+    const ytUrl = title?.hls_url?.youtube || title?.trailer_url
     if (!ytUrl) return null
     const match = ytUrl.match(/(?:v=|youtu\.be\/)([\w-]+)/)
     return match ? match[1] : null
   }
 
   function getStreamUrl(): string {
-    if (title?.hls_url?.youtube) return ''
+    if (title?.hls_url?.youtube || title?.trailer_url) return ''
     const hlsDefault = title?.hls_url?.default
     if (hlsDefault?.endsWith('.mp4')) {
       return `/api/stream/${id}/video`

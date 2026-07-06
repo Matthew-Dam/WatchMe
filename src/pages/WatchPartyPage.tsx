@@ -256,9 +256,10 @@ export default function WatchPartyPage() {
 
       {titleData && (
         <div className="w-full bg-black">
-          {titleData.hls_url?.youtube ? (
+          {titleData.hls_url?.youtube || titleData.trailer_url ? (
             <YouTubePlayer videoId={(() => {
-              const m = titleData.hls_url!.youtube!.match(/(?:v=|youtu\.be\/)([\w-]+)/)
+              const yt = titleData.hls_url?.youtube || titleData.trailer_url || ''
+              const m = yt.match(/(?:v=|youtu\.be\/)([\w-]+)/)
               return m ? m[1] : ''
             })()} titleId={titleData.id} />
           ) : (
