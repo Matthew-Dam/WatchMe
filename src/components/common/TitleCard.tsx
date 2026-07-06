@@ -59,7 +59,7 @@ export function TitleCard({
         {imageError && (
           <div className="absolute inset-0 flex items-center justify-center bg-surface">
             <span className="text-4xl font-heading font-bold text-gray-600">
-              {title.title.charAt(0)}
+              {(title.title ?? '?').charAt(0)}
             </span>
           </div>
         )}
