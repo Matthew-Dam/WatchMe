@@ -187,9 +187,7 @@ export async function clearAllTitles(): Promise<{ deleted_titles: number; delete
   return response.data
 }
 
-export async function runFullPipeline(): Promise<{
-  imported: number; skipped: number; failed: number; trailers: number; watchable: number
-}> {
+export async function runFullPipeline(): Promise<{ status: string; message: string }> {
   const response = await api.post('/admin/run-pipeline')
   return response.data
 }

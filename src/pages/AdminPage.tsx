@@ -795,11 +795,12 @@ function BulkImportTab() {
   }
 
   async function handleRunPipeline() {
-    if (!window.confirm('This will clear ALL existing titles and re-import fresh content. Continue?')) return
+    if (!window.confirm('Start fresh pipeline? This will clear ALL existing titles first, then re-import everything.')) return
     setImporting('pipeline')
     try {
-      const res = await runFullPipeline()
-      toast.success(`Pipeline done! ${res.imported} imported, ${res.watchable} watchable, ${res.trailers} trailers`)
+      await clearAllTitles()
+      await runFullPipeline()
+      toast.success('Pipeline started in background. Check back in a few minutes.')
     } catch {
       toast.error('Pipeline failed')
     } finally {
