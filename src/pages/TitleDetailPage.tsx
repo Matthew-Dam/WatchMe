@@ -372,12 +372,17 @@ export default function TitleDetailPage() {
                   )}
                 </Button>
 
-                {title.trailer_url && (
+                {title.hls_url?.default || title.hls_url?.youtube ? (
+                  <Button variant="primary" size="lg" onClick={handlePlay}>
+                    <Play className="w-5 h-5 fill-current" />
+                    Play
+                  </Button>
+                ) : title.trailer_url ? (
                   <Button variant="secondary" size="lg" onClick={handlePlay}>
-                    <Play className="w-5 h-5" />
+                    <Play className="w-5 h-5 fill-current" />
                     Play Trailer
                   </Button>
-                )}
+                ) : null}
               </div>
 
               {/* Rate section */}
