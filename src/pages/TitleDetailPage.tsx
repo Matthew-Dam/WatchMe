@@ -372,7 +372,7 @@ export default function TitleDetailPage() {
                   )}
                 </Button>
 
-                {title.hls_url?.default || title.hls_url?.youtube || title.hls_url?.dailymotion ? (
+                {title.hls_url?.default || title.hls_url?.youtube || title.hls_url?.dailymotion || title.hls_url?.vimeo ? (
                   <Button variant="primary" size="lg" onClick={handlePlay}>
                     <Play className="w-5 h-5 fill-current" />
                     Play

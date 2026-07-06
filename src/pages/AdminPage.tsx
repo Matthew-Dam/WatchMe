@@ -12,7 +12,7 @@ import {
   bulkImportTMDB, bulkImportIATop, bulkImportIACollection,
   searchIA, getTMDBByGenre,
   getIACollections, backfillTrailers, backfillMoods,
-  clearAllTitles, runFullPipeline, dedupTitles,
+  clearAllTitles, runFullPipeline, dedupTitles, importFromVimeo,
   type TMDBResult, type ImportLogEntry, type BulkImportResponse,
   type IACollection,
 } from '@/services/admin'
@@ -386,6 +386,22 @@ function TMDBImportTab() {
   const [loading, setLoading] = useState(false)
   const [importing, setImporting] = useState<string | null>(null)
   const [mode, setMode] = useState<'search' | 'popular'>('search')
+  const [vimeoUrl, setVimeoUrl] = useState('')
+  const [vimeoLoading, setVimeoLoading] = useState(false)
+
+  async function handleVimeoImport() {
+    if (!vimeoUrl.trim()) return
+    setVimeoLoading(true)
+    try {
+      const res = await importFromVimeo(vimeoUrl.trim())
+      toast.success(`Imported "${res.title}" from Vimeo`)
+      setVimeoUrl('')
+    } catch {
+      toast.error('Vimeo import failed')
+    } finally {
+      setVimeoLoading(false)
+    }
+  }
 
   async function handleSearch() {
     if (!query.trim()) return
@@ -522,6 +538,22 @@ function TMDBImportTab() {
           ))}
         </div>
       )}
+
+      <div className="border-t border-border/30 pt-6 mt-6">
+        <h3 className="text-sm font-heading font-semibold text-white mb-3">Import from Vimeo</h3>
+        <div className="flex gap-3">
+          <input
+            type="url"
+            placeholder="https://vimeo.com/123456789"
+            value={vimeoUrl}
+            onChange={(e) => setVimeoUrl(e.target.value)}
+            className="flex-1 bg-surface border border-border/50 rounded-lg px-3 py-2 text-sm text-white"
+          />
+          <Button variant="primary" size="sm" onClick={handleVimeoImport} isLoading={vimeoLoading}>
+            Import
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }

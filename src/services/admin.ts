@@ -196,3 +196,8 @@ export async function dedupTitles(): Promise<{ total_checked: number; duplicates
   const response = await api.post('/admin/dedup')
   return response.data
 }
+
+export async function importFromVimeo(url: string): Promise<{ id: string; title: string; mood_tags: string[]; categories: string[] }> {
+  const response = await api.post('/admin/vimeo/import', null, { params: { url } })
+  return response.data
+}

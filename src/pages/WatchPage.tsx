@@ -6,6 +6,7 @@ import { getTitle } from '@/services/catalog'
 import { VideoPlayer, type VideoPlayerHandle } from '@/components/player/VideoPlayer'
 import { YouTubePlayer } from '@/components/player/YouTubePlayer'
 import { DailymotionPlayer } from '@/components/player/DailymotionPlayer'
+import { VimeoPlayer } from '@/components/player/VimeoPlayer'
 import { CommentPanel } from '@/components/comments/CommentPanel'
 import { ChatPanel } from '@/components/chat/ChatPanel'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
@@ -59,8 +60,15 @@ export default function WatchPage() {
     return match ? match[1] : null
   }
 
+  function getVimeoVideoId(): string | null {
+    const vmUrl = title?.hls_url?.vimeo
+    if (!vmUrl) return null
+    const match = vmUrl.match(/\/(\d+)$/)
+    return match ? match[1] : null
+  }
+
   function getStreamUrl(): string {
-    if (title?.hls_url?.youtube || title?.trailer_url || title?.hls_url?.dailymotion) return ''
+    if (title?.hls_url?.youtube || title?.trailer_url || title?.hls_url?.dailymotion || title?.hls_url?.vimeo) return ''
     const hlsDefault = title?.hls_url?.default
     if (hlsDefault?.endsWith('.mp4')) {
       return `/api/stream/${id}/video`
@@ -69,6 +77,7 @@ export default function WatchPage() {
   }
 
   const dailymotionVideoId = getDailymotionVideoId()
+  const vimeoVideoId = getVimeoVideoId()
   const youtubeVideoId = getYouTubeVideoId()
 
   function getYear(): string {
@@ -132,7 +141,13 @@ export default function WatchPage() {
           mobileOpen ? 'h-1/2 lg:h-full' : 'flex-1',
         )}>
           <div className="flex-1 flex flex-col min-h-0">
-            {dailymotionVideoId ? (
+            {vimeoVideoId ? (
+              <VimeoPlayer
+                videoId={vimeoVideoId}
+                titleId={id || ''}
+                poster={title.backdrop_path ? `/api/image${title.backdrop_path}` : undefined}
+              />
+            ) : dailymotionVideoId ? (
               <DailymotionPlayer
                 videoId={dailymotionVideoId}
                 titleId={id || ''}

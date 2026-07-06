@@ -778,6 +778,54 @@ async def dedup_titles(
     return {"total_checked": total, "duplicates_removed": deleted, "kept": kept}
 
 
+@router.post("/vimeo/import")
+async def vimeo_import(
+    url: str = Query(...),
+    admin: dict = Depends(require_admin),
+    db: AsyncSession = Depends(get_db_session),
+):
+    from app.services.vimeo_service import VimeoService
+    repo = CatalogRepository()
+    user_repo = UserRepository(db)
+    vm = VimeoService()
+    try:
+        info = await vm.get_video_info(url)
+        if not info:
+            raise HTTPException(status_code=400, detail="Could not fetch video info from Vimeo")
+
+        dup = await check_duplicate(db, info["title"])
+        if dup:
+            raise HTTPException(status_code=409, detail=f"Duplicate: '{info['title']}' already exists")
+
+        tmdb_data = await enrich_with_tmdb(info["title"])
+        data = {
+            "title": info["title"],
+            "description": tmdb_data.get("description", info["description"]) if tmdb_data else info["description"],
+            "year": tmdb_data.get("year", 0) if tmdb_data else 0,
+            "genres": tmdb_data.get("genres", ["Free"]) if tmdb_data else ["Free"],
+            "duration": info["duration"],
+            "poster_url": info["thumbnail"],
+            "content_type": "movie",
+            "is_published": True,
+            "hls_url": {"vimeo": url},
+        }
+        if tmdb_data:
+            data["tmdb_id"] = tmdb_data.get("tmdb_id")
+            trailer = tmdb_data.get("trailer_url")
+            if trailer:
+                data["trailer_url"] = trailer
+
+        ai = auto_classify(genres=data["genres"], year=data["year"])
+        data.update(ai)
+
+        title_id = await repo.create_title(data)
+        user_id = str(admin["id"])
+        await user_repo.log_import(user_id, info["title"], data.get("tmdb_id"), "vimeo", title_id)
+        return {"id": title_id, "title": info["title"], **ai}
+    finally:
+        await vm.close()
+
+
 def _collection_name(slug: str) -> str:
     names = {
         "classic-horror": "Classic Horror",
