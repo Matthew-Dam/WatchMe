@@ -10,9 +10,7 @@ import {
   Users,
   Clock,
   Eye,
-  Film,
 } from 'lucide-react'
-import { Modal } from '@/components/ui/Modal'
 import * as catalog from '@/services/catalog'
 import * as ratings from '@/services/ratings'
 import * as watchlistService from '@/services/watchlist'
@@ -118,14 +116,6 @@ export default function TitleDetailPage() {
   const [userRating, setUserRating] = useState<number | null>(null)
   const [isRating, setIsRating] = useState(false)
   const [selectedSeason, setSelectedSeason] = useState(1)
-  const [showTrailer, setShowTrailer] = useState(false)
-
-  function getYouTubeEmbedUrl(url: string | null): string | null {
-    if (!url) return null
-    const match = url.match(/(?:v=|youtu\.be\/)([\w-]+)/)
-    if (!match) return null
-    return `https://www.youtube-nocookie.com/embed/${match[1]}?autoplay=1&rel=0`
-  }
 
   useEffect(() => {
     if (!id) return
@@ -383,30 +373,12 @@ export default function TitleDetailPage() {
                 </Button>
 
                 {title.trailer_url && (
-                  <Button variant="secondary" size="lg" onClick={() => setShowTrailer(true)}>
-                    <Film className="w-5 h-5" />
-                    Trailer
+                  <Button variant="secondary" size="lg" onClick={handlePlay}>
+                    <Play className="w-5 h-5" />
+                    Play Trailer
                   </Button>
                 )}
               </div>
-
-              <Modal isOpen={showTrailer} onClose={() => setShowTrailer(false)} title="Trailer">
-                {(() => {
-                  const embedUrl = getYouTubeEmbedUrl(title.trailer_url)
-                  return embedUrl ? (
-                    <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
-                      <iframe
-                        src={embedUrl}
-                        className="absolute inset-0 w-full h-full rounded-lg"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                      />
-                    </div>
-                  ) : (
-                    <p className="text-gray-400 text-sm">Trailer not available</p>
-                  )
-                })()}
-              </Modal>
 
               {/* Rate section */}
               <div className="flex items-center gap-4 pt-2">
