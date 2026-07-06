@@ -31,10 +31,10 @@ export function YouTubePlayer({ videoId, poster }: YouTubePlayerProps) {
   }, [videoId])
 
   return (
-    <div className="relative bg-black w-full aspect-video">
+    <div className="relative bg-black w-full h-full">
       {poster && (
         <div className="absolute inset-0 z-0">
-          <img src={poster} alt="" className="w-full h-full object-cover opacity-50" />
+          <img src={poster} alt="" className="w-full h-full object-contain" />
         </div>
       )}
       <div className="absolute inset-0 flex items-center justify-center z-10">
