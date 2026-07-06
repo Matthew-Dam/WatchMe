@@ -7,6 +7,9 @@ from app.config import settings
 from app.deps.auth_deps import require_admin
 
 logger = logging.getLogger("admin")
+
+# Keep references to background tasks so they don't get GC'd
+_background_tasks: set[asyncio.Task] = set()
 from app.deps.db_deps import get_db_session
 from app.repositories.catalog_repo import CatalogRepository
 from app.repositories.user_repo import UserRepository
@@ -705,7 +708,7 @@ async def clear_all_titles(
 async def run_pipeline(
     admin: dict = Depends(require_admin),
 ):
-    engine = create_async_engine(settings.POSTGRES_URI)
+    engine = create_async_engine(settings.POSTGRES_URI, pool_size=1, max_overflow=0)
     SessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 
     async def _run():
@@ -714,12 +717,16 @@ async def run_pipeline(
                 agent = ContentAgent(bg_db)
                 result = await agent.run_full_pipeline()
                 logger.info(f"Pipeline result: {result}")
+            except asyncio.CancelledError:
+                logger.warning("Pipeline task was cancelled")
             except Exception as e:
-                logger.error(f"Pipeline failed: {e}")
+                logger.error(f"Pipeline failed: {e}", exc_info=True)
             finally:
                 await engine.dispose()
 
-    asyncio.create_task(_run())
+    task = asyncio.create_task(_run())
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
     return {"status": "started", "message": "Pipeline running in background. Check backend logs for progress."}
 
 

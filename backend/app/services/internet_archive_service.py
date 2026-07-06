@@ -18,7 +18,7 @@ class InternetArchiveService:
 
     async def _ensure_client(self):
         if not self.client:
-            self.client = AsyncClient(timeout=30)
+            self.client = AsyncClient(timeout=10)
 
     async def search(self, query: str, page: int = 1, rows: int = 50) -> dict:
         await self._ensure_client()

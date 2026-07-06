@@ -16,7 +16,7 @@ class TMDBService:
             self.client = AsyncClient(
                 base_url=TMDB_BASE_URL,
                 params={"api_key": self.api_key},
-                timeout=30,
+                timeout=10,
             )
 
     async def search_movie(self, query: str, page: int = 1) -> list[dict]:
