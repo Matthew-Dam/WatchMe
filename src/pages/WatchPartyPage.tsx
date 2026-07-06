@@ -9,6 +9,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { VideoPlayer, type VideoPlayerHandle } from '@/components/player/VideoPlayer'
 import { YouTubePlayer } from '@/components/player/YouTubePlayer'
+import { DailymotionPlayer } from '@/components/player/DailymotionPlayer'
 import * as catalog from '@/services/catalog'
 import { cn } from '@/lib/utils'
 import { Users, Link, Play, Pause, ArrowLeft } from 'lucide-react'
@@ -256,7 +257,12 @@ export default function WatchPartyPage() {
 
       {titleData && (
         <div className="w-full bg-black">
-          {titleData.hls_url?.youtube || titleData.trailer_url ? (
+          {titleData.hls_url?.dailymotion ? (
+            <DailymotionPlayer videoId={(() => {
+              const m = (titleData.hls_url?.dailymotion || '').match(/\/video\/([\w-]+)/)
+              return m ? m[1] : ''
+            })()} titleId={titleData.id} />
+          ) : titleData.hls_url?.youtube || titleData.trailer_url ? (
             <YouTubePlayer videoId={(() => {
               const yt = titleData.hls_url?.youtube || titleData.trailer_url || ''
               const m = yt.match(/(?:v=|youtu\.be\/)([\w-]+)/)

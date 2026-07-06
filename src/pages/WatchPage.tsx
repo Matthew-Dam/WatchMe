@@ -5,6 +5,7 @@ import { useVideoProgress } from '@/hooks/useVideoProgress'
 import { getTitle } from '@/services/catalog'
 import { VideoPlayer, type VideoPlayerHandle } from '@/components/player/VideoPlayer'
 import { YouTubePlayer } from '@/components/player/YouTubePlayer'
+import { DailymotionPlayer } from '@/components/player/DailymotionPlayer'
 import { CommentPanel } from '@/components/comments/CommentPanel'
 import { ChatPanel } from '@/components/chat/ChatPanel'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
@@ -51,8 +52,15 @@ export default function WatchPage() {
     return match ? match[1] : null
   }
 
+  function getDailymotionVideoId(): string | null {
+    const dmUrl = title?.hls_url?.dailymotion
+    if (!dmUrl) return null
+    const match = dmUrl.match(/\/video\/([\w-]+)/)
+    return match ? match[1] : null
+  }
+
   function getStreamUrl(): string {
-    if (title?.hls_url?.youtube || title?.trailer_url) return ''
+    if (title?.hls_url?.youtube || title?.trailer_url || title?.hls_url?.dailymotion) return ''
     const hlsDefault = title?.hls_url?.default
     if (hlsDefault?.endsWith('.mp4')) {
       return `/api/stream/${id}/video`
@@ -60,6 +68,7 @@ export default function WatchPage() {
     return `/api/stream/${id}/master.m3u8`
   }
 
+  const dailymotionVideoId = getDailymotionVideoId()
   const youtubeVideoId = getYouTubeVideoId()
 
   function getYear(): string {
@@ -123,7 +132,13 @@ export default function WatchPage() {
           mobileOpen ? 'h-1/2 lg:h-full' : 'flex-1',
         )}>
           <div className="flex-1 flex flex-col min-h-0">
-            {youtubeVideoId ? (
+            {dailymotionVideoId ? (
+              <DailymotionPlayer
+                videoId={dailymotionVideoId}
+                titleId={id || ''}
+                poster={title.backdrop_path ? `/api/image${title.backdrop_path}` : undefined}
+              />
+            ) : youtubeVideoId ? (
               <YouTubePlayer
                 videoId={youtubeVideoId}
                 titleId={id || ''}

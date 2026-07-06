@@ -45,6 +45,7 @@ from app.repositories.user_repo import UserRepository
 from app.services.tmdb_service import TMDBService
 from app.services.internet_archive_service import InternetArchiveService
 from app.services.youtube_service import YouTubeService
+from app.services.dailymotion_service import DailymotionService
 from app.services.auto_classifier import enrich_with_tmdb, auto_classify, check_duplicate
 from app.models.postgres_models import ImportLog, Comment, CommentLike
 
@@ -290,6 +291,20 @@ class ContentAgent:
                 finally:
                     await yt.close()
 
+            if not had_watchable:
+                dm = DailymotionService()
+                try:
+                    dm_id = await dm.search_free_movie(title, year)
+                    if dm_id:
+                        data["hls_url"] = {"dailymotion": f"https://www.dailymotion.com/video/{dm_id}"}
+                        had_watchable = True
+                        self.stats["watchable"] += 1
+                        logger.info(f"[WATCHABLE] {title} — found on Dailymotion")
+                except Exception:
+                    pass
+                finally:
+                    await dm.close()
+
             ai = auto_classify(genres=data.get("genres"), runtime=data.get("duration"), vote_average=data.get("vote_average"), popularity=data.get("popularity"), year=year)
             data.update(ai)
 
@@ -465,6 +480,52 @@ class ContentAgent:
             await yt.close()
         return dict(self.stats)
 
+    async def import_dailymotion_free_movies(self, limit: int = 20) -> dict:
+        logger.info(f"[DAILYMOTION] Fetching free movies (top {limit})")
+        dm = DailymotionService()
+        try:
+            results = await dm.search_free_movies_batch("full movie free", limit)
+            imported = 0
+            for r in results:
+                title = r["title"]
+                dup = await check_duplicate(self.db, title)
+                if dup:
+                    self.stats["skipped"] += 1
+                    continue
+                data = {
+                    "title": title,
+                    "description": r.get("description", ""),
+                    "year": 0,
+                    "hls_url": {"dailymotion": r["url"]},
+                    "poster_url": r.get("thumbnail"),
+                    "content_type": "movie",
+                    "is_published": True,
+                    "genres": ["Free"],
+                }
+                tmdb_data = await enrich_with_tmdb(title)
+                if tmdb_data:
+                    data.update({
+                        "description": tmdb_data.get("description", r.get("description", "")),
+                        "year": tmdb_data.get("year", 0),
+                        "genres": tmdb_data.get("genres", ["Free"]),
+                        "tmdb_id": tmdb_data.get("tmdb_id"),
+                        "poster_url": tmdb_data.get("poster_url", r.get("thumbnail")),
+                        "backdrop_url": tmdb_data.get("backdrop_url"),
+                    })
+                    trailer = tmdb_data.get("trailer_url")
+                    if trailer:
+                        data["trailer_url"] = trailer
+                ai = auto_classify(genres=data.get("genres"), year=data.get("year"))
+                data.update(ai)
+                title_id = await self.repo.create_title(data)
+                await self.user_repo.log_import(ADMIN_USER_ID, title, data.get("tmdb_id"), "dailymotion", title_id)
+                imported += 1
+            self.stats["imported"] += imported
+            self.stats["watchable"] += imported
+        finally:
+            await dm.close()
+        return dict(self.stats)
+
     async def backfill_trailers(self) -> int:
         logger.info("[BACKFILL] Fetching missing trailers")
         imports = await self.user_repo.get_all_successful_imports()
@@ -504,8 +565,9 @@ class ContentAgent:
             ("[5/9] TMDB Top Rated", lambda: self.import_tmdb_top_rated(50)),
             ("[6/9] TMDB Animation", lambda: self.import_tmdb_animation(50)),
             ("[7/9] YouTube Free Movies", lambda: self.import_youtube_free_movies(20)),
-            ("[8/9] Upcoming Releases", lambda: self.import_tmdb_upcoming(30)),
-            ("[9/9] Backfill Trailers", lambda: self.backfill_trailers()),
+            ("[8/9] Dailymotion Free Movies", lambda: self.import_dailymotion_free_movies(20)),
+            ("[9/9] Upcoming Releases", lambda: self.import_tmdb_upcoming(30)),
+            ("[10/9] Backfill Trailers", lambda: self.backfill_trailers()),
         ]
 
         for name, fn in steps:
