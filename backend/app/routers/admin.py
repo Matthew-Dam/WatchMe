@@ -1,7 +1,12 @@
 from typing import Optional
+import asyncio
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from app.config import settings
 from app.deps.auth_deps import require_admin
+
+logger = logging.getLogger("admin")
 from app.deps.db_deps import get_db_session
 from app.repositories.catalog_repo import CatalogRepository
 from app.repositories.user_repo import UserRepository
@@ -699,10 +704,23 @@ async def clear_all_titles(
 @router.post("/run-pipeline")
 async def run_pipeline(
     admin: dict = Depends(require_admin),
-    db: AsyncSession = Depends(get_db_session),
 ):
-    agent = ContentAgent(db)
-    return await agent.run_full_pipeline()
+    engine = create_async_engine(settings.POSTGRES_URI)
+    SessionLocal = async_sessionmaker(engine, expire_on_commit=False)
+
+    async def _run():
+        async with SessionLocal() as bg_db:
+            try:
+                agent = ContentAgent(bg_db)
+                result = await agent.run_full_pipeline()
+                logger.info(f"Pipeline result: {result}")
+            except Exception as e:
+                logger.error(f"Pipeline failed: {e}")
+            finally:
+                await engine.dispose()
+
+    asyncio.create_task(_run())
+    return {"status": "started", "message": "Pipeline running in background. Check backend logs for progress."}
 
 
 @router.post("/dedup")

@@ -256,23 +256,22 @@ class ContentAgent:
                 self.stats["trailers"] += 1
 
             had_watchable = False
-            if data.get("vote_average", 0) >= 6.0:
-                ia = InternetArchiveService()
-                try:
-                    ia_result = await ia.search(title, page=1, rows=5)
-                    for item in ia_result.get("items", []):
-                        if item.get("title", "").lower().startswith(title.lower()[:20]):
-                            details = await ia.get_details(item["identifier"])
-                            if details and details.get("download_url"):
-                                data["hls_url"] = {"default": details["download_url"]}
-                                had_watchable = True
-                                self.stats["watchable"] += 1
-                                logger.info(f"[WATCHABLE] {title} — found on IA")
-                                break
-                except Exception:
-                    pass
-                finally:
-                    await ia.close()
+            ia = InternetArchiveService()
+            try:
+                ia_result = await ia.search(title, page=1, rows=5)
+                for item in ia_result.get("items", []):
+                    if item.get("title", "").lower().startswith(title.lower()[:20]):
+                        details = await ia.get_details(item["identifier"])
+                        if details and details.get("download_url"):
+                            data["hls_url"] = {"default": details["download_url"]}
+                            had_watchable = True
+                            self.stats["watchable"] += 1
+                            logger.info(f"[WATCHABLE] {title} — found on IA")
+                            break
+            except Exception:
+                pass
+            finally:
+                await ia.close()
 
             if not had_watchable:
                 yt = YouTubeService()
