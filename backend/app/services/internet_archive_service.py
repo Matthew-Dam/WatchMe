@@ -43,6 +43,50 @@ class InternetArchiveService:
             "size": rows,
         }
 
+    async def search_top_feature_films(self, page: int = 1, rows: int = 50) -> dict:
+        await self._ensure_client()
+        params = {
+            "q": "mediatype:movies AND collection:(feature_films OR moviesandfilms OR publicdomainmovies OR opensource_movies OR classic_tv)",
+            "fl[]": SEARCH_FIELDS,
+            "sort[]": "downloads desc",
+            "rows": rows,
+            "page": page,
+            "output": "json",
+        }
+        resp = await self.client.get(IA_SEARCH_URL, params=params)
+        resp.raise_for_status()
+        data = resp.json()
+        response = data.get("response", {})
+        docs = response.get("docs", [])
+        return {
+            "items": [self._transform(doc) for doc in docs],
+            "total": response.get("numFound", 0),
+            "page": page,
+            "size": rows,
+        }
+
+    async def search_hd_movies(self, page: int = 1, rows: int = 50) -> dict:
+        await self._ensure_client()
+        params = {
+            "q": "mediatype:movies AND (format:MPEG4 OR format:h.264) AND collection:(feature_films OR moviesandfilms)",
+            "fl[]": SEARCH_FIELDS,
+            "sort[]": "downloads desc",
+            "rows": rows,
+            "page": page,
+            "output": "json",
+        }
+        resp = await self.client.get(IA_SEARCH_URL, params=params)
+        resp.raise_for_status()
+        data = resp.json()
+        response = data.get("response", {})
+        docs = response.get("docs", [])
+        return {
+            "items": [self._transform(doc) for doc in docs],
+            "total": response.get("numFound", 0),
+            "page": page,
+            "size": rows,
+        }
+
     async def get_details(self, identifier: str) -> Optional[dict]:
         await self._ensure_client()
         resp = await self.client.get(f"{IA_METADATA_URL}/{identifier}")

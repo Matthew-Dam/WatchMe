@@ -258,16 +258,19 @@ class ContentAgent:
             had_watchable = False
             ia = InternetArchiveService()
             try:
-                ia_result = await ia.search(title, page=1, rows=5)
-                for item in ia_result.get("items", []):
-                    if item.get("title", "").lower().startswith(title.lower()[:20]):
-                        details = await ia.get_details(item["identifier"])
-                        if details and details.get("download_url"):
-                            data["hls_url"] = {"default": details["download_url"]}
-                            had_watchable = True
-                            self.stats["watchable"] += 1
-                            logger.info(f"[WATCHABLE] {title} — found on IA")
-                            break
+                for q in (f'"{title}" feature film', f'"{title}" movie', title):
+                    ia_result = await ia.search(q, page=1, rows=3)
+                    for item in ia_result.get("items", []):
+                        if item.get("title", "").lower().startswith(title.lower()[:20]):
+                            details = await ia.get_details(item["identifier"])
+                            if details and details.get("download_url"):
+                                data["hls_url"] = {"default": details["download_url"]}
+                                had_watchable = True
+                                self.stats["watchable"] += 1
+                                logger.info(f"[WATCHABLE] {title} — found on IA")
+                                break
+                    if had_watchable:
+                        break
             except Exception:
                 pass
             finally:
@@ -313,9 +316,10 @@ class ContentAgent:
         logger.info(f"[IA TOP] Fetching top {limit} feature films")
         ia = InternetArchiveService()
         try:
-            result = await ia.search("feature film", page=1, rows=limit)
-            for item in result.get("items", []):
-                await self._ia_import_one(item["identifier"], item["title"])
+            for search_fn in (ia.search_top_feature_films, ia.search_hd_movies):
+                result = await search_fn(page=1, rows=limit)
+                for item in result.get("items", []):
+                    await self._ia_import_one(item["identifier"], item["title"])
         finally:
             await ia.close()
         return dict(self.stats)
