@@ -30,8 +30,7 @@ class YouTubeService:
                     "q": query,
                     "type": "video",
                     "videoDuration": "long",
-                    "videoLicense": "creativeCommon",
-                    "maxResults": 3,
+                    "maxResults": 5,
                     "key": self.api_key,
                 })
                 if resp.status_code != 200:
@@ -62,10 +61,10 @@ class YouTubeService:
                 "q": query,
                 "type": "video",
                 "videoDuration": "long",
-                "videoLicense": "creativeCommon",
                 "maxResults": min(max_results, 50),
                 "key": self.api_key,
                 "order": "viewCount",
+                "videoDefinition": "high",
             })
             resp.raise_for_status()
             data = resp.json()
