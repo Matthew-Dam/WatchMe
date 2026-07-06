@@ -11,6 +11,7 @@ import { VideoPlayer, type VideoPlayerHandle } from '@/components/player/VideoPl
 import { YouTubePlayer } from '@/components/player/YouTubePlayer'
 import { DailymotionPlayer } from '@/components/player/DailymotionPlayer'
 import { VimeoPlayer } from '@/components/player/VimeoPlayer'
+import { EmbedPlayer } from '@/components/player/EmbedPlayer'
 import * as catalog from '@/services/catalog'
 import { cn } from '@/lib/utils'
 import { Users, Link, Play, Pause, ArrowLeft } from 'lucide-react'
@@ -274,6 +275,11 @@ export default function WatchPartyPage() {
               const m = yt.match(/(?:v=|youtu\.be\/)([\w-]+)/)
               return m ? m[1] : ''
             })()} titleId={titleData.id} />
+          ) : titleData.hls_url?.embed ? (
+            <EmbedPlayer
+              src={titleData.hls_url.embed}
+              poster={titleData.backdrop_path ? `/api/image${titleData.backdrop_path}` : undefined}
+            />
           ) : (
             <VideoPlayer
               ref={playerRef}

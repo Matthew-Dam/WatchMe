@@ -7,6 +7,7 @@ import { VideoPlayer, type VideoPlayerHandle } from '@/components/player/VideoPl
 import { YouTubePlayer } from '@/components/player/YouTubePlayer'
 import { DailymotionPlayer } from '@/components/player/DailymotionPlayer'
 import { VimeoPlayer } from '@/components/player/VimeoPlayer'
+import { EmbedPlayer } from '@/components/player/EmbedPlayer'
 import { CommentPanel } from '@/components/comments/CommentPanel'
 import { ChatPanel } from '@/components/chat/ChatPanel'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
@@ -67,8 +68,12 @@ export default function WatchPage() {
     return match ? match[1] : null
   }
 
+  function getEmbedUrl(): string | null {
+    return title?.hls_url?.embed ?? null
+  }
+
   function getStreamUrl(): string {
-    if (title?.hls_url?.youtube || title?.trailer_url || title?.hls_url?.dailymotion || title?.hls_url?.vimeo) return ''
+    if (title?.hls_url?.youtube || title?.trailer_url || title?.hls_url?.dailymotion || title?.hls_url?.vimeo || title?.hls_url?.embed) return ''
     const hlsDefault = title?.hls_url?.default
     if (hlsDefault?.endsWith('.mp4')) {
       return `/api/stream/${id}/video`
@@ -79,6 +84,7 @@ export default function WatchPage() {
   const dailymotionVideoId = getDailymotionVideoId()
   const vimeoVideoId = getVimeoVideoId()
   const youtubeVideoId = getYouTubeVideoId()
+  const embedUrl = getEmbedUrl()
 
   function getYear(): string {
     if (!title?.release_date) return ''
@@ -157,6 +163,11 @@ export default function WatchPage() {
               <YouTubePlayer
                 videoId={youtubeVideoId}
                 titleId={id || ''}
+                poster={title.backdrop_path ? `/api/image${title.backdrop_path}` : undefined}
+              />
+            ) : embedUrl ? (
+              <EmbedPlayer
+                src={embedUrl}
                 poster={title.backdrop_path ? `/api/image${title.backdrop_path}` : undefined}
               />
             ) : (

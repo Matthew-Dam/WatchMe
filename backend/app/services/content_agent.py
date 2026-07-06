@@ -46,6 +46,7 @@ from app.services.tmdb_service import TMDBService
 from app.services.internet_archive_service import InternetArchiveService
 from app.services.youtube_service import YouTubeService
 from app.services.dailymotion_service import DailymotionService
+from app.services.embed_service import EmbedService
 from app.services.auto_classifier import enrich_with_tmdb, auto_classify, check_duplicate
 from app.models.postgres_models import ImportLog, Comment, CommentLike
 
@@ -304,6 +305,18 @@ class ContentAgent:
                     pass
                 finally:
                     await dm.close()
+
+            if not had_watchable:
+                embed = EmbedService()
+                try:
+                    embed_url = embed.get_embed_url(tmdb_id, media_type)
+                    if embed_url:
+                        data["hls_url"] = {"embed": embed_url}
+                        had_watchable = True
+                        self.stats["watchable"] += 1
+                        logger.info(f"[WATCHABLE] {title} — embed URL from TMDB #{tmdb_id}")
+                except Exception:
+                    pass
 
             ai = auto_classify(genres=data.get("genres"), runtime=data.get("duration"), vote_average=data.get("vote_average"), popularity=data.get("popularity"), year=year)
             data.update(ai)
