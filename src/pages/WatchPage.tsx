@@ -5,9 +5,7 @@ import { useVideoProgress } from '@/hooks/useVideoProgress'
 import { getTitle } from '@/services/catalog'
 import { VideoPlayer, type VideoPlayerHandle } from '@/components/player/VideoPlayer'
 import { YouTubePlayer } from '@/components/player/YouTubePlayer'
-import { DailymotionPlayer } from '@/components/player/DailymotionPlayer'
 import { VimeoPlayer } from '@/components/player/VimeoPlayer'
-import { EmbedPlayer } from '@/components/player/EmbedPlayer'
 import { CommentPanel } from '@/components/comments/CommentPanel'
 import { ChatPanel } from '@/components/chat/ChatPanel'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
@@ -30,7 +28,6 @@ export default function WatchPage() {
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('comments')
   const [mobileOpen, setMobileOpen] = useState(false)
 
-  // Load title
   useEffect(() => {
     if (!id) return
     setLoading(true)
@@ -40,7 +37,6 @@ export default function WatchPage() {
       .finally(() => setLoading(false))
   }, [id])
 
-  // Save progress every 10s
   useVideoProgress(id || '')
 
   function handleSeek(time: number) {
@@ -48,16 +44,8 @@ export default function WatchPage() {
   }
 
   function getYouTubeVideoId(): string | null {
-    const ytUrl = title?.hls_url?.youtube || title?.trailer_url
-    if (!ytUrl) return null
-    const match = ytUrl.match(/(?:v=|youtu\.be\/)([\w-]+)/)
-    return match ? match[1] : null
-  }
-
-  function getDailymotionVideoId(): string | null {
-    const dmUrl = title?.hls_url?.dailymotion
-    if (!dmUrl) return null
-    const match = dmUrl.match(/\/video\/([\w-]+)/)
+    if (!title?.trailer_url) return null
+    const match = title.trailer_url.match(/(?:v=|youtu\.be\/)([\w-]+)/)
     return match ? match[1] : null
   }
 
@@ -68,12 +56,8 @@ export default function WatchPage() {
     return match ? match[1] : null
   }
 
-  function getEmbedUrl(): string | null {
-    return title?.hls_url?.embed ?? null
-  }
-
   function getStreamUrl(): string {
-    if (title?.hls_url?.youtube || title?.trailer_url || title?.hls_url?.dailymotion || title?.hls_url?.vimeo || title?.hls_url?.embed) return ''
+    if (title?.hls_url?.vimeo || title?.trailer_url) return ''
     const hlsDefault = title?.hls_url?.default
     if (hlsDefault?.endsWith('.mp4')) {
       return `/api/stream/${id}/video`
@@ -81,10 +65,8 @@ export default function WatchPage() {
     return `/api/stream/${id}/master.m3u8`
   }
 
-  const dailymotionVideoId = getDailymotionVideoId()
   const vimeoVideoId = getVimeoVideoId()
   const youtubeVideoId = getYouTubeVideoId()
-  const embedUrl = getEmbedUrl()
 
   function getYear(): string {
     if (!title?.release_date) return ''
@@ -113,7 +95,6 @@ export default function WatchPage() {
 
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
-      {/* Mobile top bar */}
       <div className="lg:hidden flex items-center justify-between px-4 py-2 bg-surface/80 backdrop-blur-sm border-b border-border">
         <button
           onClick={() => navigate(-1)}
@@ -141,7 +122,6 @@ export default function WatchPage() {
       </div>
 
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-        {/* Video Player Section */}
         <div className={cn(
           'flex flex-col',
           mobileOpen ? 'h-1/2 lg:h-full' : 'flex-1',
@@ -153,21 +133,10 @@ export default function WatchPage() {
                 titleId={id || ''}
                 poster={title.backdrop_path ? `/api/image${title.backdrop_path}` : undefined}
               />
-            ) : dailymotionVideoId ? (
-              <DailymotionPlayer
-                videoId={dailymotionVideoId}
-                titleId={id || ''}
-                poster={title.backdrop_path ? `/api/image${title.backdrop_path}` : undefined}
-              />
             ) : youtubeVideoId ? (
               <YouTubePlayer
                 videoId={youtubeVideoId}
                 titleId={id || ''}
-                poster={title.backdrop_path ? `/api/image${title.backdrop_path}` : undefined}
-              />
-            ) : embedUrl ? (
-              <EmbedPlayer
-                src={embedUrl}
                 poster={title.backdrop_path ? `/api/image${title.backdrop_path}` : undefined}
               />
             ) : (
@@ -179,7 +148,6 @@ export default function WatchPage() {
               />
             )}
 
-            {/* Video Info Bar (desktop: below player; mobile: hidden on mobile since it's in top bar) */}
             <div className="hidden lg:flex items-center gap-3 px-4 py-2.5 bg-surface/60 border-t border-border">
               <button
                 onClick={() => navigate(-1)}
@@ -203,13 +171,11 @@ export default function WatchPage() {
           </div>
         </div>
 
-        {/* Right Sidebar */}
         <div className={cn(
           'lg:w-[30%] lg:min-w-[320px] lg:max-w-[420px] border-l border-border flex flex-col bg-surface/30',
           'lg:h-full',
           mobileOpen ? 'flex-1' : 'hidden lg:flex',
         )}>
-          {/* Tabs */}
           <div className="flex border-b border-border shrink-0">
             <button
               onClick={() => setSidebarTab('comments')}
@@ -237,7 +203,6 @@ export default function WatchPage() {
             </button>
           </div>
 
-          {/* Tab content */}
           <div className="flex-1 overflow-hidden">
             {sidebarTab === 'comments' ? (
               <CommentPanel
