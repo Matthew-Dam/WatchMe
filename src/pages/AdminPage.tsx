@@ -679,6 +679,10 @@ function IAImportTab() {
 
 function BulkImportTab() {
   const [importing, setImporting] = useState<string | null>(null)
+  const [uploadTitleId, setUploadTitleId] = useState('')
+  const [uploadFile, setUploadFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadResult, setUploadResult] = useState<string | null>(null)
 
   const sources = [
     { key: 'trending', label: 'Trending Now', desc: 'This week\'s hottest movies' },
@@ -810,6 +814,38 @@ function BulkImportTab() {
           </Button>
         </div>
       </div>
+
+      <div className="border-t border-border/30 pt-6">
+        <h3 className="text-sm font-heading font-semibold text-white mb-3">Upload Video</h3>
+        <p className="text-xs text-gray-400 mb-3">Upload an MP4 file and attach it to an existing title.</p>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <input
+            type="text"
+            placeholder="Title ID"
+            value={uploadTitleId}
+            onChange={(e) => setUploadTitleId(e.target.value)}
+            className="bg-surface border border-border/50 rounded-lg px-3 py-2 text-sm text-white w-full sm:w-48"
+          />
+          <input
+            type="file"
+            accept="video/mp4,video/webm,video/quicktime"
+            onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+            className="text-sm text-gray-400 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-cyan/10 file:text-cyan hover:file:bg-cyan/20"
+          />
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={handleUploadVideo}
+            isLoading={uploading}
+            disabled={!uploadTitleId || !uploadFile}
+          >
+            Upload
+          </Button>
+        </div>
+        {uploadResult && (
+          <p className="text-xs text-green-400 mt-2">{uploadResult}</p>
+        )}
+      </div>
     </div>
   )
 
@@ -849,6 +885,29 @@ function BulkImportTab() {
       toast.error('Dedup failed')
     } finally {
       setImporting(null)
+    }
+  }
+
+  async function handleUploadVideo() {
+    if (!uploadTitleId || !uploadFile) return
+    setUploading(true)
+    setUploadResult(null)
+    try {
+      const form = new FormData()
+      form.append('title_id', uploadTitleId)
+      form.append('file', uploadFile)
+      const res = await api.post('/admin/upload-video', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      const data = res.data
+      setUploadResult(`Uploaded! File: ${data.filename}`)
+      toast.success('Video uploaded and attached to title')
+      setUploadTitleId('')
+      setUploadFile(null)
+    } catch {
+      toast.error('Upload failed')
+    } finally {
+      setUploading(false)
     }
   }
 }

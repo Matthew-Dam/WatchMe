@@ -1,7 +1,10 @@
 from typing import Optional
 import asyncio
 import logging
-from fastapi import APIRouter, Depends, HTTPException, Query
+import os
+import uuid
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from app.config import settings
 from app.deps.auth_deps import require_admin
@@ -824,6 +827,44 @@ async def vimeo_import(
         return {"id": title_id, "title": info["title"], **ai}
     finally:
         await vm.close()
+
+
+@router.post("/upload-video")
+async def upload_video(
+    title_id: str = Form(...),
+    file: UploadFile = File(...),
+    admin: dict = Depends(require_admin),
+):
+    if not file.content_type or not file.content_type.startswith("video/"):
+        raise HTTPException(status_code=400, detail="Only video files are allowed")
+
+    os.makedirs("media", exist_ok=True)
+    ext = os.path.splitext(file.filename or "video.mp4")[1] or ".mp4"
+    filename = f"{title_id}{ext}"
+    filepath = os.path.join("media", filename)
+
+    content = await file.read()
+    with open(filepath, "wb") as f:
+        f.write(content)
+
+    repo = CatalogRepository()
+    title = await repo.get_title_by_id(title_id)
+    if not title:
+        os.remove(filepath)
+        raise HTTPException(status_code=404, detail="Title not found")
+
+    hls_url = title.get("hls_url") or {}
+    if isinstance(hls_url, str):
+        hls_url = {"default": hls_url}
+    hls_url["default"] = f"/api/stream/media/{filename}"
+    await repo.update_title(title_id, {"hls_url": hls_url})
+
+    logger.info(f"[UPLOAD] {filename} → {title.get('title')} ({title_id})")
+    return {
+        "message": "Video uploaded",
+        "filename": filename,
+        "url": f"/api/stream/media/{filename}",
+    }
 
 
 def _collection_name(slug: str) -> str:

@@ -1,8 +1,19 @@
+import os
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import RedirectResponse, Response
+from fastapi.responses import RedirectResponse, FileResponse
 from app.repositories.catalog_repo import CatalogRepository
 
 router = APIRouter(prefix="/stream", tags=["Stream"])
+
+MEDIA_DIR = "media"
+
+
+@router.get("/media/{filename}")
+async def serve_media(filename: str):
+    filepath = os.path.join(MEDIA_DIR, filename)
+    if not os.path.exists(filepath):
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(filepath, media_type="video/mp4")
 
 
 @router.get("/{title_id}/master.m3u8")
